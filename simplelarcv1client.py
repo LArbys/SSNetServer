@@ -145,7 +145,16 @@ class SimpleLArCV1Client( SSNetClient ):
 
         return msg
     
-                
+
+    def process_reply(self,frames):
+        parts = len(frames)
+        for i in range(0,parts,2):
+            name  = frames[i].decode("ascii")
+            x_enc = frames[i+1]
+            arr = msgpack.unpackb(x_enc, object_hook=m.decode)
+            print "SimpleLArCV1Client[{}] received array name=\"{}\" shape={}".format(self._identity,name,arr.shape)
+        
+        
                 
             
 

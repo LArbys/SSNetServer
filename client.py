@@ -1,5 +1,6 @@
 import time
 import zmq
+from collections import OrderedDict
 
 """
 SSNetClient
@@ -66,13 +67,14 @@ class SSNetClient(object):
             socks = dict(self._poller.poll(self._timeout_secs*1000))
             if socks.get(self._socket) == zmq.POLLIN:
                 # got message back
-                reply = self._socket.recv()
+                reply = self._socket.recv_multipart()
                 if not reply:
                     break
                 
                 # process reply
-                print "SSNetClient[{}] received reply: {}".format(self._identity,reply)
-                return reply
+                print "SSNetClient[{}] received reply.".format(self._identity)
+                self.process_reply( reply )
+                return True
                 
             else:
                 # timed out
@@ -87,7 +89,7 @@ class SSNetClient(object):
 
         # should not get here
         print "SSNetClient[{}] Server seems to be offline, abandoning".format(self._identity)
-        return None
+        return False
 
     def get_batch( self ):
         raise NotImplementedError('Must be implemented by the subclass.')

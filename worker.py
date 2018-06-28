@@ -61,9 +61,10 @@ class SSNetWorker(object):
                     if cycles > 3 and randint(0, 5) == 0:
                         print "SSNetWorker[{}]: ---- Simulating CPU overload ----".format(self._identity)
                         time.sleep(5)
-                    print "SSNetWorker[{}]: Normal reply".format(self._identity)
+                    print "SSNetWorker[{}]: Replying".format(self._identity)
                     processed = self.process_message( frames[2:] )
-                    reply = [frames[0],frames[1],"Thanks for the data. Love {}.".format(self._identity)]
+                    reply = [frames[0],frames[1]]
+                    reply.extend( self.generate_reply() )
                     self._socket.send_multipart(reply)
                     # recieved data from broker. reset liveness count
                     liveness = self._num_missing_beats
@@ -110,4 +111,7 @@ class SSNetWorker(object):
         return True
 
     def process_message(self,frames):
+        raise NotImplemented("Inherited classes must define this function")
+
+    def generate_reply(self):
         raise NotImplemented("Inherited classes must define this function")
