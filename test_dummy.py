@@ -13,10 +13,11 @@ from larcv import larcv
 NBR_CLIENTS=1
 NBR_WORKERS=1
 
-def start_client(ident,fname,batchsize):
+def start_client(ident,fname_in, fname_out,batchsize):
     products = {larcv.kProductImage2D:"wire"}
-    client = SimpleLArCV1Client(fname, batchsize, ident, "localhost", products )
+    client = SimpleLArCV1Client(fname_in, fname_out, batchsize, ident, "localhost", products )
     msg = client.send_receive()
+    client.io_out.finalize()
 
 def start_worker(ident):
     worker = DummyLArCV1Worker(ident,"localhost")
@@ -35,7 +36,7 @@ def main():
 
     # start up clients
     for i in range(NBR_CLIENTS):
-        start(start_client,i,"supera-Run000001-SubRun000300.root",10)
+        start(start_client,i,"supera-Run000001-SubRun000300.root","test.root",10)
 
     # start up workers
     for i in range(NBR_WORKERS):

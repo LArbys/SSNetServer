@@ -39,15 +39,18 @@ It will prepare a numpy array for each image product given.  The array shapes ar
 The message sent to the worker is:
 
     [frame 0] "producer name" (string)
-    [frame 1] numpy array for batch
-    [frame 2] "producer name" (string)
-    [frame 3] numpy array for batch
+    [frame 1] 'Plane 65535 (rows,cols) = (0,0) ... Left Top (0,0) ... Right Bottom (0,0)' (the output of ImageMeta::dump())
+    [frame 2] numpy array for batch
+    [frame 3] "producer name" (string)
+    [frame 4] 'Plane 65535 (rows,cols) = (0,0) ... Left Top (0,0) ... Right Bottom (0,0)' (the output of ImageMeta::dump())
+    [frame 5] numpy array for batch
     (and so on...)
 
 The received message is expected in the same format
 
     [frame 0] "returned array name" (string)
-    [frame 1] numpy array
+    [frame 1] 'Plane 65535 (rows,cols) = (0,0) ... Left Top (0,0) ... Right Bottom (0,0)' (the output of ImageMeta::dump())
+    [frame 2] numpy array    
     ...
 
 The arrays in the received messages will be saved to an output larcv file.
@@ -58,4 +61,5 @@ Used for debugging.  Expects message from SimpleLArCV1Client and dumps numpy arr
 Returns:
 
     [frame 0] "dummy"
-    [frame 1] (1,1,1,1) numpy array
+    [frame 1] 'Plane 65535 (rows,cols) = (0,0) ... Left Top (0,0) ... Right Bottom (0,0)' (the output of ImageMeta::dump())
+    [frame 2] numpy array, filled with zeros, whose size is from the first received image
