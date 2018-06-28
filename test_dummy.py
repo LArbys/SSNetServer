@@ -35,7 +35,7 @@ def main():
 
     # start up clients
     for i in range(NBR_CLIENTS):
-        start(start_client,i,"supera-Run000001-SubRun000300.root",3)
+        start(start_client,i,"supera-Run000001-SubRun000300.root",10)
 
     # start up workers
     for i in range(NBR_WORKERS):

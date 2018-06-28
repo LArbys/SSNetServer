@@ -37,6 +37,9 @@ class SSNetClient(object):
         self._compress = do_compress
         self.load_socket()
 
+        self._ttracker = OrderedDict()
+        self._ttracker["send/receive::triptime"] = 0.0
+        
     def load_socket(self):
         self._context  = zmq.Context()
         self._socket   = self._context.socket(zmq.REQ)        

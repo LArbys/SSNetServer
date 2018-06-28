@@ -52,11 +52,10 @@ class SimpleLArCV1Client( SSNetClient ):
             self.imgdata_dict[(ktype,producer_name)] = None
 
         # timing tracker
-        self.ttracker = OrderedDict()
-        self.ttracker["getbatch::indexing"] = 0.0
-        self.ttracker["getbatch::total"] = 0.0
-        self.ttracker["getbatch::fileio"] = 0.0
-        self.ttracker["getbatch::fill"] = 0.0
+        self._ttracker["getbatch::indexing"] = 0.0
+        self._ttracker["getbatch::total"] = 0.0
+        self._ttracker["getbatch::fileio"] = 0.0
+        self._ttracker["getbatch::fill"] = 0.0
         
 
     def get_batch( self ):
@@ -79,13 +78,14 @@ class SimpleLArCV1Client( SSNetClient ):
             if self.delivered+self.batch_size>=self.entries:
                 self.permuted = np.arange( self.nentries, dtype=np.int )
                 self.delivered = 0
-        self.ttracker["getbatch::indexing"] += time.time()-tindex
+        self._ttracker["getbatch::indexing"] += time.time()-tindex
 
 
         # prepare batch
         # -------------------------
         # eventually this needs to be a user defined function get(self.io). user defines function not config file.
         # right now, only support loading image array data
+        tbatch = time.time()
         for i,index in enumerate(self.permuted[self.delivered:self.delivered+self.batch_size]):
 
             print "batchindex=%d, entryindex=%d"%(i,index)
@@ -103,11 +103,11 @@ class SimpleLArCV1Client( SSNetClient ):
                 except:
                     raise RuntimeError("could not retrieve data product for product_id=%d and producername=%s"%(ktype,producer_name))
                 ev_containers[(ktype,producer_name)] = ev_data
-            self.ttracker["getbatch::fileio"] += time.time()-tread                
+            self._ttracker["getbatch::fileio"] += time.time()-tread                
 
             # now we return them, based on type
             # for now, only support images and simple loading
-            ev_data = {}
+            tfill = time.time()
             for (ktype,producer_name),container in ev_containers.items():
                 k = (ktype,producer_name) # key
                 if ktype!=larcv.kProductImage2D:
@@ -115,12 +115,18 @@ class SimpleLArCV1Client( SSNetClient ):
 
                 # images
                 img_v = [ np.transpose( larcv.as_ndarray(container.Image2DArray()[i]), (1,0) ) for i in range(container.Image2DArray().size()) ]
-                ev_data[ k ] = img_v
 
                 if self.imgdata_dict[k] is None or self.imgdata_dict[k].shape[0]!=self.batch_size:
-                    self.imgdata_dict[k] = np.zeros( (self.batch_size, 1, img_v[0].shape[0], img_v[0].shape[1] ), dtype=np.float32 )
-                for img in img_v:
-                    self.imgdata_dict[k][i,0,:] = img[:]
+                    self.imgdata_dict[k] = np.zeros( (self.batch_size, len(img_v), img_v[0].shape[0], img_v[0].shape[1] ), dtype=np.float32 )
+                for p,img in enumerate(img_v):
+                    self.imgdata_dict[k][i,p,:] = img[:]
+            self._ttracker["getbatch::fill"] += time.time()-tfill
+        self.delivered += self.batch_size
+        self._ttracker["getbatch::total"] += time.time()-tbatch
+
+        for n,t in self._ttracker.items():
+            if "getbatch" in n:
+                print "%s : %.2f secs : %.2f secs/batch : %.2f secs/img"%(n, t, t/(self.delivered/self.batch_size), t/self.delivered)
                     
         return self.imgdata_dict
 
