@@ -4,7 +4,8 @@ import multiprocessing
 import zmq
 
 from simplelarcv1client import SimpleLArCV1Client
-from simplelarcv1worker import SimpleLArCV1Worker
+from dummylarcv1worker import DummyLArCV1Worker
+#from simplelarcv1worker import SimpleLArCV1Worker
 from server import SSNetBroker
 
 from larcv import larcv
@@ -18,7 +19,7 @@ def start_client(ident,fname,batchsize):
     msg = client.send_receive()
 
 def start_worker(ident):
-    worker = SimpleLArCV1Worker(ident,"localhost")
+    worker = DummyLArCV1Worker(ident,"localhost")
     worker.do_work()
 
 def main():
