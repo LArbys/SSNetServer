@@ -3,19 +3,19 @@ from __future__ import print_function
 import multiprocessing
 import zmq
 
-from client import SSNetClient
-from worker import SSNetWorker
+from testclient import TestClient
+from testworker import TestWorker
 from server import SSNetBroker
 
 NBR_CLIENTS=30
-NBR_WORKERS=2
+NBR_WORKERS=5
 
 def start_client(ident):
-    client = SSNetClient(ident,"localhost")
+    client = TestClient(ident,"localhost")
     msg = client.send_receive()
 
 def start_worker(ident):
-    worker = SSNetWorker(ident,"localhost")
+    worker = TestWorker(ident,"localhost")
     worker.do_work()
 
 def main():
