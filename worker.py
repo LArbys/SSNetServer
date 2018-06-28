@@ -4,7 +4,7 @@ from random import randint
 
 from workermessages import PPP_READY, PPP_HEARTBEAT
 
-class SSNetWorker:
+class SSNetWorker(object):
 
     def __init__(self,identity,broker_ipaddress, port=5560, heartbeat_interval_secs=2, num_missing_beats=3):
         self._identity = u"Worker-{}".format(identity).encode("ascii")
@@ -52,7 +52,7 @@ class SSNetWorker:
                 if not frames:
                     break # Interrupted
                 
-                if len(frames) == 3:
+                if len(frames) >=3 :
                     # Simulate various problems, after a few cycles
                     cycles += 1
                     if cycles > 3 and randint(0, 5) == 0:
@@ -62,7 +62,8 @@ class SSNetWorker:
                         print "SSNetWorker[{}]: ---- Simulating CPU overload ----".format(self._identity)
                         time.sleep(5)
                     print "SSNetWorker[{}]: Normal reply".format(self._identity)
-                    reply = [frames[0],frames[1],"Hello world from {}. request: {}".format(self._identity,frames[2].decode("ascii"))]
+                    processed = self.process_message( frames[2:] )
+                    reply = [frames[0],frames[1],"Thanks for the data. Love {}.".format(self._identity)]
                     self._socket.send_multipart(reply)
                     # recieved data from broker. reset liveness count
                     liveness = self._num_missing_beats
@@ -107,3 +108,6 @@ class SSNetWorker:
         # end of while loop
 
         return True
+
+    def process_message(self,frames):
+        raise NotImplemented("Inherited classes must define this function")

@@ -24,7 +24,7 @@ Behavior with respect to the server
 
 """
 
-class SSNetClient:
+class SSNetClient(object):
 
     def __init__( self, identity, broker_ipaddress, port=5559, timeout_secs=30, max_tries=3, do_compress=True ):
         #  Prepare our context and sockets
@@ -48,12 +48,17 @@ class SSNetClient:
 
     def send_receive(self):
 
+        self.get_batch()
+        msg = self.make_outgoing_message()
+        
         retries_left = self._max_tries
 
         while retries_left>0:
         
             # send request
-            self._socket.send(b"Hello from {}".format(self._identity))
+            for part in msg[:-1]:
+                self._socket.send(part, zmq.SNDMORE)
+            self._socket.send(msg[-1])
 
             socks = dict(self._poller.poll(self._timeout_secs*1000))
             if socks.get(self._socket) == zmq.POLLIN:
@@ -61,7 +66,7 @@ class SSNetClient:
                 reply = self._socket.recv()
                 if not reply:
                     break
-
+                
                 # process reply
                 print "SSNetClient[{}] received reply: {}".format(self._identity,reply)
                 return reply
@@ -81,18 +86,9 @@ class SSNetClient:
         print "SSNetClient[{}] Server seems to be offline, abandoning".format(self._identity)
         return None
 
-    def load_larcv_file(self):
-        pass
+    def get_batch( self ):
+        raise NotImplementedError('Must be implemented by the subclass.')
 
-    def serialize_array(self):
-        pass
-
-    def deserialize_array(self):
-        pass
-
-    def process_event(self):
-        pass
-
-    def process_file(self):
-        pass
-        
+    def make_outgoing_message( self ):
+        raise NotImplementedError('Must be implemented by the subclass.')
+    
