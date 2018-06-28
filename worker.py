@@ -34,7 +34,6 @@ class SSNetWorker(object):
 
     def do_work(self):
 
-        cycles = 0 # for failure sim
         liveness = self._num_missing_beats
         interval = self._interval_init
         heartbeat_at = time.time() + self._heartbeat_interval
@@ -46,32 +45,29 @@ class SSNetWorker(object):
             # Handle worker activity on backend
             if socks.get(self._socket) == zmq.POLLIN:
                 #  Get message
-                #  - 3-part envelope + content -> request
+                #  - >=3-part: envelope + content + request
                 #  - 1-part HEARTBEAT -> heartbeat
                 frames = self._socket.recv_multipart()
                 if not frames:
                     break # Interrupted
                 
                 if len(frames) >=3 :
-                    # Simulate various problems, after a few cycles
-                    cycles += 1
-                    if cycles > 3 and randint(0, 5) == 0:
-                        print "SSNetWorker[{}] ******* Simulating a crash *******".format(self._identity)
-                        break
-                    if cycles > 3 and randint(0, 5) == 0:
-                        print "SSNetWorker[{}]: ---- Simulating CPU overload ----".format(self._identity)
-                        time.sleep(5)
+
                     print "SSNetWorker[{}]: Replying".format(self._identity)
+                    # calling child function
                     processed = self.process_message( frames[2:] )
+
+                    # add back client-routing envelope
                     reply = [frames[0],frames[1]]
+                    # append reply content
                     reply.extend( self.generate_reply() )
+                    # send back through the proxy
                     self._socket.send_multipart(reply)
-                    # recieved data from broker. reset liveness count
+                    
+                    # received request from broker.
+                    # this means its still alive: reset liveness count
                     liveness = self._num_missing_beats
-                    
-                    print "SSNetWorker[{}] doing work.".format(self._identity)
-                    time.sleep(1)  # Do some heavy work
-                    
+                                        
                 elif len(frames) == 1 and frames[0] == PPP_HEARTBEAT:
                     print "SSNetWorker[{}]: Recieved Queue heartbeat".format(self._identity)
                     # reset liveness count
