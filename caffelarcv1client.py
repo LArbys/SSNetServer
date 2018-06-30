@@ -255,8 +255,22 @@ class CaffeLArCV1Client( SSNetClient ):
         
                     
         
-                
-            
+    def process_events(self, start=None, end=None):
+
+        tprocess = time.time()
+        if start is None:
+            start = 0
+        if end is None:
+            end = self.nentries
+
+        for ientry in range(start,end):
+            ok = self.send_receive()
+            if not ok:
+                raise RuntimeError("Trouble processing event")
+
+        tprocess = time.time()-tprocess
+        print "Time to run CaffeLArCV1Client[{}]::process_events: %.2f secs (%.2f secs/event)".format(self._identity)%(tprocess,tprocess/(end-start))
+        
 
             
             

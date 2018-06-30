@@ -63,3 +63,21 @@ Returns:
     [frame 0] "dummy"
     [frame 1] 'Plane 65535 (rows,cols) = (0,0) ... Left Top (0,0) ... Right Bottom (0,0)' (the output of ImageMeta::dump())
     [frame 2] numpy array, filled with zeros, whose size is from the first received image
+
+### CaffeLArCV1Client/Worker
+
+Worker processes all three planes using Caffe1.
+
+Uses the same message protocol as Simple/Dummy pair above.
+
+Client sends the images for one plane for one event as one batch. To send all three planes, 3 sets of frames are shipped together.
+
+The worker processes one frame at a time. It knows which plane's network to use from the meta.  Because processing is frameset at a time,
+only one network is running, while the others are idle. This could be improved by modeling the broker as a majordomo server, which
+knows how to ship different flavor of requests to different flavor of workers.
+
+Good enough for now, though.
+
+On Meitner, 0.44 secs per event (read file+fill batch+roundtrip+write output)x3 planes.
+Several threads, but in total mem usage between 2.5 to 3 GB.
+(Will want to see mem usage in tests on separate nodes for worker and proxy.)

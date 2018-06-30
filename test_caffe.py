@@ -14,7 +14,8 @@ NBR_WORKERS=1
 def start_client(ident,fname_in, fname_out,batchsize):
     products = {larcv.kProductImage2D:"wire"}
     client = CaffeLArCV1Client(fname_in, fname_out, batchsize, ident, "localhost", products )
-    msg = client.send_receive() # just one batch
+    #msg = client.send_receive() # just one batch
+    client.process_events(0,100)
     client.io_out.finalize()
 
 def start_worker(ident):
