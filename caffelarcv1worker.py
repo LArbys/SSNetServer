@@ -33,7 +33,7 @@ class CaffeLArCV1Worker( SSNetWorker ):
         self.NPLANES = 3
 
         # Tensor dimension sizes
-        self.BATCHSIZE=4
+        self.BATCHSIZE=1
         self.NCLASSES = 3
         self.WIDTH=None  # set later
         self.HEIGHT=None # set later
@@ -50,7 +50,7 @@ class CaffeLArCV1Worker( SSNetWorker ):
     def process_message(self, frames ):
         """ we expect a batch for each plane 
         """
-        
+
         # remake arrays
         self.shape_dict = {}
         self.meta_dict  = {}
@@ -70,9 +70,14 @@ class CaffeLArCV1Worker( SSNetWorker ):
             # -- array
             arr = msgpack.unpackb(x_enc, object_hook=m.decode)
 
-            self.image_dict[name] = arr
-            self.shape_dict[name] = arr.shape
-            self.meta_dict[name]  = meta
+            key = (name,meta.plane())
+            if key not in self.image_dict:
+                self.image_dict[key] = {}
+                self.meta_dict[key]  = {}                
+
+            self.image_dict[key] = arr
+            self.meta_dict[key]  = meta            
+            self.shape_dict[key] = arr.shape
                 
             print "CaffeLArCV1Worker[{}] received array name=\"{}\" shape={} meta={}".format(self._identity,name,arr.shape,meta.dump().strip())
 
@@ -84,40 +89,42 @@ class CaffeLArCV1Worker( SSNetWorker ):
         """
         
         reply = []
-        for name,shape in self.shape_dict.items():
+        for key,shape in self.shape_dict.items():
 
+            name    = key[0]
+            planeid = key[1]
+            
             dummy = np.zeros( shape, dtype=np.float32 )
-            meta  = self.meta_dict[name]
-            img   = self.image_dict[name]
-            shape = self.shape_dict[name]
-            planeid = int( meta.plane() )
+            meta  = self.meta_dict[key]
+            img   = self.image_dict[key]
 
             msg_batchsize = shape[0]
-            if msg_batchsize==self.BATCHSIZE:
-                ssnetout = None
-            else:
-                ssnetout = np.zeros( shape, dtype=np.float32 )
+            ssnetout = np.zeros( (shape[0],self.NCLASSES,shape[2],shape[3]), dtype=np.float32 )
 
-            blobshape = ( self.BATCHSIZE, shape[1], shape[2], shape[3] )
+            blobshape = ( self.BATCHSIZE, 1, shape[2], shape[3] )
 
             # run the net for the plane
-            net[planeid].blobs['data'].reshape( blobshape )
+            self.nets[planeid].blobs['data'].reshape( *blobshape )
 
             # process the images
             for ibatch in range(0,msg_batchsize,self.BATCHSIZE):            
-                net[planeid].blobs['data'].data[...] = img[ibatch*self.BATCHSIZE:(ibatch+1)*self.BATCHSIZE,:]
-                net[planeid].forward()
+                self.nets[planeid].blobs['data'].data[...] = img[ibatch*self.BATCHSIZE:(ibatch+1)*self.BATCHSIZE,:]
+                self.nets[planeid].forward()
                 if (ibatch+1)*self.BATCHSIZE>msg_batchsize:
                     remaining = msg_batchsize % self.BATCHSIZE
                     start = ibatch*self.BATCHSIZE
                     end   = ibatch*self.BATCHSIZE+remaining
-                    ssnetout[start:end,:] = net[planeid].blob['softmax'].data[0:remaining,:]
-
+                    ssnetout[start:end,:] = self.nets[planeid].blobs['softmax'].data[0:remaining,:]
+                else:
+                    start = ibatch*self.BATCHSIZE
+                    end   = (ibatch+1)*self.BATCHSIZE
+                    ssnetout[start:end,:] = self.nets[planeid].blobs['softmax'].data[0:self.BATCHSIZE,:]
             # encode
             x_enc = msgpack.packb( ssnetout, default=m.encode )
 
             # make the return message
-            reply.append( name )
+            print "CaffeLArCV1Worker[{}] preparing reply for name=\"{}\" shape={} meta={}".format(self._identity,name,ssnetout.shape,meta.dump().strip())
+            reply.append( name.encode('utf-8') )
             reply.append( meta.dump().strip() )
             reply.append(x_enc)
 

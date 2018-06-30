@@ -2,6 +2,7 @@ import time
 from client import SSNetClient
 from collections import OrderedDict
 import ROOT as rt
+from ROOT import std
 from larcv import larcv
 import numpy as np
 
@@ -34,6 +35,7 @@ class CaffeLArCV1Client( SSNetClient ):
         self.io = larcv.IOManager( larcv.IOManager.kREAD )
         self.io.add_in_file( self.input_rootfile )
         self.io.initialize()
+        self.NPLANES = 3
 
         # setup output
         if not copy_input:
@@ -112,7 +114,7 @@ class CaffeLArCV1Client( SSNetClient ):
         self.batch2rse = {} # map from batch to (run,subrun,event)
         for i,index in enumerate(self.permuted[self.delivered:self.delivered+self.batch_size]):
 
-            #print "batchindex=%d, entryindex=%d"%(i,index)
+            print "batchindex=%d, entryindex=%d"%(i,index)
             
             # read entry
             tread = time.time()
@@ -120,6 +122,7 @@ class CaffeLArCV1Client( SSNetClient ):
             if nbytes<=0:
                 raise RuntimeError("failure reading entry %d in file %s"%(index,self.larcv1_rootfile))
 
+            # get event containers
             ev_containers = {}
             rse = None
             for ktype,producer_name in self.product_dict.items():
@@ -144,14 +147,22 @@ class CaffeLArCV1Client( SSNetClient ):
                     raise RuntimeError("Do not support loading product id=%d, currently"%(ktype))
 
                 # images
-                img_v = [ np.transpose( larcv.as_ndarray(container.Image2DArray()[i]), (1,0) ) for i in range(container.Image2DArray().size()) ]
+                img_v = [ np.transpose( larcv.as_ndarray(container.Image2DArray()[x]), (1,0) ) for x in range(container.Image2DArray().size()) ]
+                
                 # meta
-                self.imgmeta_dict[producer_name] = container.Image2DArray()[0].meta()
+                if self.imgmeta_dict[producer_name] is None:
+                    self.imgmeta_dict[producer_name] = [ container.Image2DArray()[x].meta() for x in range(container.Image2DArray().size()) ]
 
-                if self.imgdata_dict[k] is None or self.imgdata_dict[k].shape[0]!=self.batch_size:
-                    self.imgdata_dict[k] = np.zeros( (self.batch_size, len(img_v), img_v[0].shape[0], img_v[0].shape[1] ), dtype=np.float32 )
-                for p,img in enumerate(img_v):
-                    self.imgdata_dict[k][i,p,:] = img[:]
+                # store the arrays into self.imgdata_dict.
+                # we split the planes, since they have different networks
+
+                # if first time filling for this producer/name combo, create list of arrays for storage
+                if self.imgdata_dict[k] is None or self.imgdata_dict[k][0].shape[0]!=self.batch_size:
+                    self.imgdata_dict[k] = [ np.zeros( (self.batch_size, 1, img_v[x].shape[0], img_v[x].shape[1] ), dtype=np.float32 ) for x in range(self.NPLANES) ]
+                # copy the image data into the batch array
+                for p in range(self.NPLANES):
+                    img = img_v[p]
+                    self.imgdata_dict[k][p][i,0,:] = img
             self._ttracker["getbatch::fill"] += time.time()-tfill
         self.delivered += self.batch_size
         self._ttracker["getbatch::total"] += time.time()-tbatch
@@ -170,53 +181,72 @@ class CaffeLArCV1Client( SSNetClient ):
         """
 
         msg = []
-        for (ktype,name),data in self.imgdata_dict.items():
-            x_enc = msgpack.packb(data, default=m.encode)
-            meta  = self.imgmeta_dict[name]
-            msg.append( name )
-            msg.append( meta.dump().strip() )
-            msg.append( x_enc )
-            print "CaffeLArCV1Client[{}] sending array name=\"{}\" shape={} meta={}".format(self._identity,name,data.shape,meta.dump().strip())
+        for (ktype,name),plane_img_v in self.imgdata_dict.items():
+            meta_v  = self.imgmeta_dict[name]
+            for p in range(self.NPLANES):
+                data = plane_img_v[p]
+                meta = meta_v[p]
+
+                x_enc = msgpack.packb(data, default=m.encode)
+                msg.append( name )
+                msg.append( meta.dump().strip() )
+                msg.append( x_enc )
+                print "CaffeLArCV1Client[{}] sending array name=\"{}\" shape={} meta={}".format(self._identity,name,data.shape,meta.dump().strip())
 
         return msg
     
 
     def process_reply(self,frames):
-        parts = len(frames)
 
-        # for each batch of images, we save an entry ...
-        # how to handle multiple batches? will need a batch to eventid map
-        # when eventid changes, then save
+        # message parts consist of ssnet output
+        # one part contains a batch for one plane
+        # we must collect data for all three planes for an event, before writing it to disk
 
+        # by construction, one batch is for one event
+        # one message contains one batch
+        # this makes it a lot easier to understand
+        # someone smarter can make general code
 
+        plane_img_v_dict = {}
+
+        parts = len(frames)        
         for i in range(0,parts,3):
             name    = frames[i].decode("ascii")
             metamsg = frames[i+1]
             x_enc   = frames[i+2]
 
-            meta = decode_larcv1_metamsg( metamsg )                        
+            if name not in plane_img_v_dict:
+                plane_img_v_dict[name] = [ std.vector("larcv::Image2D")() for x in range(self.NPLANES) ]
+
+            meta = decode_larcv1_metamsg( metamsg )
             arr = msgpack.unpackb(x_enc, object_hook=m.decode)
-            print "CaffeLArCV1Client[{}] received array name=\"{}\" shape={} meta={}".format(self._identity,name,arr.shape,meta.dump().strip())
             nbatches = arr.shape[0]
+            print "CaffeLArCV1Client[{}] received array name=\"{}\" shape={} meta={} batchsize={}".format(self._identity,name,arr.shape,meta.dump().strip(),nbatches)            
             
             for ib in range(nbatches):
-
-                rse = self.batch2rse[ib]
-                if self.current_rse is not None and rse!=self.current_rse:
-                    # save output entry
-                    self.io_out.set_id( rse[0], rse[1], rse[2] )
-                    print "CaffeLArCV1Client[{}] saving entry {}".format(self._identity,rse)
-                    self.io_out.save_entry()
-                    self.io_out.clear_entry()
-                    
+                # set the RSE
+                rse = self.batch2rse[ib]                    
                 self.current_rse = rse
                 
-                output_ev_container = self.io_out.get_data( larcv.kProductImage2D, str(name) )
-                for i in range( arr.shape[1] ):
-                    meta = decode_larcv1_metamsg( metamsg, i )
-                    img = larcv.as_image2d_meta( np.transpose( arr[ib,i,:], (1,0) ), meta )
-                    output_ev_container.Append( img )
-            
+                img = larcv.as_image2d_meta( np.transpose( arr[ib,0,:], (1,0) ), meta )
+                print "fill ",name," meta=",meta.dump().strip()
+                plane_img_v_dict[name][meta.plane()].push_back( img )
+
+        # make output event containers
+        print "CaffeLArCV1Client[{}] storing images".format(self._identity)
+        for name,plane_img_v in plane_img_v_dict.items():
+            print "name: ",name,plane_img_v
+            for img_v in plane_img_v:
+                print img_v
+                print img_v.size()
+                planeid = img_v.front().meta().plane()
+                print "CaffeLArCV1Client[{}] storing name={} plane={}".format(self._identity,name,planeid)
+                outname = "%s_plane%d"%(str(name.decode("ascii")),planeid)
+                print "Filling event container: ",outname
+                output_ev_container = self.io_out.get_data( larcv.kProductImage2D, outname )
+                for iimg in range(img_v.size()):
+                    output_ev_container.Append( img_v[iimg] )
+        
         # save output entry
         self.io_out.set_id( rse[0], rse[1], rse[2] )
         self.io_out.save_entry()
