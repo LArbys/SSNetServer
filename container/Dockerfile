@@ -65,6 +65,7 @@ RUN apt-get update && apt-get install -y \
 RUN apt-get update && apt-get install -y \
     python-pip \
     python-zmq \
+    python-skimage \    
     python-msgpack && \
     apt-get autoremove -y && apt-get clean -y && \
     pip install msgpack-numpy && \
