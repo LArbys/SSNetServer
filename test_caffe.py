@@ -19,7 +19,7 @@ def start_client(ident,fname_in, fname_out,batchsize):
     client.io_out.finalize()
 
 def start_worker(ident):
-    worker = CaffeLArCV1Worker(ident,"localhost")
+    worker = CaffeLArCV1Worker(ident,"localhost", gpuid=1)
     worker.do_work()
 
 def main():
@@ -35,7 +35,8 @@ def main():
 
     # start up clients
     for i in range(NBR_CLIENTS):
-        start(start_client,i,"/media/hdd1/larbys/ssnet_dllee_trainingdata/test_1e1p_lowE_00.root","output_test_caffe.root",1)
+        #start(start_client,i,"/media/hdd1/larbys/ssnet_dllee_trainingdata/test_1e1p_lowE_00.root","output_test_caffe.root",1)
+        start(start_client,i,"/tmp/test_1e1p_lowE_00.root","output_test_caffe.root",1)
 
     # start up workers
     for i in range(NBR_WORKERS):
