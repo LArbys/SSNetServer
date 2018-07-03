@@ -18,16 +18,21 @@ from workermessages import decode_larcv1_metamsg
 class CaffeLArCV1Worker( SSNetWorker ):
     """ This worker simply receives data and replies with dummy string. prints shape of array. """
 
-    def __init__( self, identity,broker_ipaddress, port=5560, heartbeat_interval_secs=2, num_missing_beats=3):
+    def __init__( self, identity,broker_ipaddress, port=5560, heartbeat_interval_secs=2, num_missing_beats=3, weight_dir="/tmp", model_dir="/tmp"):
         super( CaffeLArCV1Worker, self ).__init__(identity,broker_ipaddress, port=port, heartbeat_interval_secs=heartbeat_interval_secs, num_missing_beats=num_missing_beats)
         self.shape_dict = {}
 
         # SSNET MODEL USED IN 2018 MICROBOONE PAPER
         #self.MODEL_PROTOTXT = "/home/twongj01/working/ubresnet/models/dllee_ssnet2018.prototxt"
-        self.MODEL_PROTOTXT = "dllee_ssnet2018.prototxt"
-        self.WEIGHTS = [ "/home/twongj01/working/ubresnet/weights/ssnet2018caffe/segmentation_pixelwise_ikey_plane0_iter_75500.caffemodel",
-                         "/home/twongj01/working/ubresnet/weights/ssnet2018caffe/segmentation_pixelwise_ikey_plane1_iter_65500.caffemodel",
-                         "/home/twongj01/working/ubresnet/weights/ssnet2018caffe/segmentation_pixelwise_ikey_plane2_iter_68000.caffemodel" ]
+        self.MODEL_DIR = model_dir        
+        self.MODEL_PROTOTXT = self.MODEL_DIR+"/dllee_ssnet2018.prototxt"
+        #self.WEIGHTS = [ "/home/twongj01/working/ubresnet/weights/ssnet2018caffe/segmentation_pixelwise_ikey_plane0_iter_75500.caffemodel",
+        #                 "/home/twongj01/working/ubresnet/weights/ssnet2018caffe/segmentation_pixelwise_ikey_plane1_iter_65500.caffemodel",
+        #                 "/home/twongj01/working/ubresnet/weights/ssnet2018caffe/segmentation_pixelwise_ikey_plane2_iter_68000.caffemodel" ]
+        self.WEIGHT_DIR = weight_dir        
+        self.WEIGHTS = [ self.WEIGHT_DIR+"/segmentation_pixelwise_ikey_plane0_iter_75500.caffemodel",
+                         self.WEIGHT_DIR+"/segmentation_pixelwise_ikey_plane1_iter_65500.caffemodel",
+                         self.WEIGHT_DIR+"/segmentation_pixelwise_ikey_plane2_iter_68000.caffemodel" ]
     
         # Number of Planes (should be three at most)
         self.NPLANES = 3
