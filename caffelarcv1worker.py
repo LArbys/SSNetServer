@@ -18,7 +18,7 @@ from workermessages import decode_larcv1_metamsg
 class CaffeLArCV1Worker( SSNetWorker ):
     """ This worker simply receives data and replies with dummy string. prints shape of array. """
 
-    def __init__( self, identity,broker_ipaddress, port=5560, heartbeat_interval_secs=2, num_missing_beats=3, weight_dir="/tmp", model_dir="/tmp"):
+    def __init__( self, identity,broker_ipaddress, port=5560, heartbeat_interval_secs=2, num_missing_beats=3, gpuid=0, weight_dir="/tmp", model_dir="/tmp"):
         super( CaffeLArCV1Worker, self ).__init__(identity,broker_ipaddress, port=port, heartbeat_interval_secs=heartbeat_interval_secs, num_missing_beats=num_missing_beats)
         self.shape_dict = {}
 
@@ -42,7 +42,7 @@ class CaffeLArCV1Worker( SSNetWorker ):
         self.NCLASSES = 3
         self.WIDTH=None  # set later
         self.HEIGHT=None # set later
-        self.GPUID=0
+        self.GPUID=gpuid
 
         # SET THE GPUID
         caffe.set_mode_gpu()
