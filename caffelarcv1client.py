@@ -5,6 +5,8 @@ import ROOT as rt
 from ROOT import std
 from larcv import larcv
 import numpy as np
+import zmq
+import zlib
 
 import msgpack
 import msgpack_numpy as m
@@ -55,6 +57,7 @@ class CaffeLArCV1Client( SSNetClient ):
         self.delivered = 0
         self.permuted = np.random.permutation( self.nentries )
         self.totserved = 0
+        self.compression_level = 6
 
         if type(product_dict) is dict:
             self.product_dict=product_dict
@@ -188,10 +191,17 @@ class CaffeLArCV1Client( SSNetClient ):
                 meta = meta_v[p]
 
                 x_enc = msgpack.packb(data, default=m.encode)
+                x_comp = zlib.compress(x_enc,self.compression_level)
+                #frmsg = zmq.Frame(data=x_enc)
+                #cmmsg = zmq.Frame(data=x_comp)
+                #msg_size = len(frmsg.bytes)
+                #com_size = len(cmmsg.bytes)
+                
                 msg.append( name )
                 msg.append( meta.dump().strip() )
-                msg.append( x_enc )
+                msg.append( x_comp )                
                 print "CaffeLArCV1Client[{}] sending array name=\"{}\" shape={} meta={}".format(self._identity,name,data.shape,meta.dump().strip())
+                #print "CaffeLArCV1Client[{}] compression ratio: ",com_size/msg_size
 
         return msg
     
@@ -213,7 +223,8 @@ class CaffeLArCV1Client( SSNetClient ):
         for i in range(0,parts,3):
             name    = frames[i].decode("ascii")
             metamsg = frames[i+1]
-            x_enc   = frames[i+2]
+            x_comp  = frames[i+2]
+            x_enc   = zlib.decompress(x_comp)
 
             if name not in plane_img_v_dict:
                 plane_img_v_dict[name] = [ std.vector("larcv::Image2D")() for x in range(self.NPLANES) ]

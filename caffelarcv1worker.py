@@ -1,6 +1,8 @@
 import os,sys,time
 from worker import SSNetWorker
 import numpy as np
+import zlib
+import zmq
 
 from larcv import larcv
 
@@ -44,6 +46,9 @@ class CaffeLArCV1Worker( SSNetWorker ):
         self.HEIGHT=None # set later
         self.GPUID=gpuid
 
+        # compression level
+        self.compression_level = 6
+        
         # SET THE GPUID
         caffe.set_mode_gpu()
         caffe.set_device(self.GPUID)
@@ -65,7 +70,8 @@ class CaffeLArCV1Worker( SSNetWorker ):
             # parse frames
             name  = frames[i].decode("ascii")
             metamsg  = frames[i+1]
-            x_enc = frames[i+2]
+            x_comp = frames[i+2]
+            x_enc  = zlib.decompress(x_comp)
 
             # decode frames
             
@@ -112,8 +118,9 @@ class CaffeLArCV1Worker( SSNetWorker ):
             self.nets[planeid].blobs['data'].reshape( *blobshape )
 
             # process the images
-            for ibatch in range(0,msg_batchsize,self.BATCHSIZE):            
-                self.nets[planeid].blobs['data'].data[...] = img[ibatch*self.BATCHSIZE:(ibatch+1)*self.BATCHSIZE,:]
+            for ibatch in range(0,msg_batchsize,self.BATCHSIZE):
+                imgslice = img[ibatch*self.BATCHSIZE:(ibatch+1)*self.BATCHSIZE,:]
+                self.nets[planeid].blobs['data'].data[...] = imgslice
                 self.nets[planeid].forward()
                 if (ibatch+1)*self.BATCHSIZE>msg_batchsize:
                     remaining = msg_batchsize % self.BATCHSIZE
@@ -124,14 +131,27 @@ class CaffeLArCV1Worker( SSNetWorker ):
                     start = ibatch*self.BATCHSIZE
                     end   = (ibatch+1)*self.BATCHSIZE
                     ssnetout[start:end,:] = self.nets[planeid].blobs['softmax'].data[0:self.BATCHSIZE,:]
+
+                # we threshold score images so compression performs better
+                outslice = ssnetout[start:end,:]
+                for c in range(outslice.shape[1]):
+                    chslice = outslice[:,c,:].reshape( (1,1,imgslice.shape[2],imgslice.shape[3]) )
+                    chslice[ imgslice<5.0 ] = 0
+                
             # encode
             x_enc = msgpack.packb( ssnetout, default=m.encode )
+            x_comp = zlib.compress(x_enc,self.compression_level)
+
+            # for debug: inspect compression gains (usually reduction to 1% or lower of original size)
+            encframe = zmq.Frame(x_enc)
+            comframe = zmq.Frame(x_comp)
 
             # make the return message
             print "CaffeLArCV1Worker[{}] preparing reply for name=\"{}\" shape={} meta={}".format(self._identity,name,ssnetout.shape,meta.dump().strip())
+
             reply.append( name.encode('utf-8') )
             reply.append( meta.dump().strip() )
-            reply.append(x_enc)
+            reply.append( x_comp )
 
         return reply
         
