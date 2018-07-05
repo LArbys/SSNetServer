@@ -37,6 +37,7 @@ class SSNetClient(object):
         self._expected_shape = (24,1,512,512)
         self._compress = do_compress
         self.load_socket()
+        self.nmsgs = 0
 
         self._ttracker = OrderedDict()
         self._ttracker["send/receive::triptime"] = 0.0
@@ -57,6 +58,8 @@ class SSNetClient(object):
         
         retries_left = self._max_tries
 
+        troundtrip = time.time()
+
         while retries_left>0:
         
             # send request
@@ -73,6 +76,9 @@ class SSNetClient(object):
                 
                 # process reply
                 print "SSNetClient[{}] received reply.".format(self._identity)
+                troundtrip = time.time()-troundtrip
+                self._ttracker["send/receive::triptime"] += troundtrip
+                self.nmsgs += 1
                 self.process_reply( reply )
                 return True
                 
@@ -88,6 +94,9 @@ class SSNetClient(object):
                 
 
         # should not get here
+        troundtrip = time.time()-troundtrip
+        self._ttracker["send/receive::triptime"] += troundtrip
+
         print "SSNetClient[{}] Server seems to be offline, abandoning".format(self._identity)
         return False
 
@@ -97,3 +106,11 @@ class SSNetClient(object):
     def make_outgoing_message( self ):
         raise NotImplementedError('Must be implemented by the subclass.')
     
+    def print_time_tracker(self):
+
+        
+        print "=============  TimeTracker =============="
+        print "number of messages: ",self.nmsgs
+        for k,v in self._ttracker.items():
+            print k,": ",v," secs total",
+        print "========================================="
