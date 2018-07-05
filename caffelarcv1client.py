@@ -22,7 +22,7 @@ from workermessages import decode_larcv1_metamsg
 class CaffeLArCV1Client( SSNetClient ):
 
     def __init__(self, input_rootfile, output_rootfile, batch_size, identity, broker_ipaddress, product_dict,
-                 random_access=True, copy_input=False, port=5559, timeout_secs=30, max_tries=3, do_compress=True, serialize_root=True ):
+                 random_access=True, copy_input=False, port=5559, timeout_secs=30, max_tries=3, do_compress=True ):
         
         # Call Mother
         super( CaffeLArCV1Client, self ).__init__( identity, broker_ipaddress, port=port, timeout_secs=timeout_secs, max_tries=max_tries, do_compress=do_compress )
