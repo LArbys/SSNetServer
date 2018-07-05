@@ -18,7 +18,7 @@ if __name__ == "__main__":
     args = parser.parse_args( sys.argv[1:] )
 
     products = {larcv.kProductImage2D: args.treename }
-    client = CaffeLArCV1Client( args.input_file, args.output_file, 1, args.identity, args.broker, products, start=args.start, end=args.end )
+    client = CaffeLArCV1Client( args.input_file, args.output_file, 1, args.identity, args.broker, products )
 
     start = None
     end = None
@@ -30,5 +30,4 @@ if __name__ == "__main__":
     client.process_events(start=start,end=end)
     client.io_out.finalize()
 
-    
-    
+    client.print_time_tracker()

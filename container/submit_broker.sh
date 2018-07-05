@@ -10,7 +10,8 @@
 #SBATCH --nodelist=pgpu03
 
 CONTAINER=/cluster/kappa/90-days-archive/wongjiradlab/larbys/images/singularity-ssnetserver/singularity-ssnetserver-cuda8.0-nvidia384.66.img
-WORKDIR=/usr/local/ssnetserver
+#WORKDIR=/usr/local/ssnetserver
+WORKDIR=/cluster/kappa/wongjiradlab/twongj01/ssnetserver
 
 module load singularity
-singularity exec ${CONTAINER} bash -c "cd ${WORKDIR}/container && source setup_container.sh && ./run_broker.sh"
+singularity exec ${CONTAINER} bash -c "cd ${WORKDIR}/container && ./run_broker.sh ${WORKDIR}"

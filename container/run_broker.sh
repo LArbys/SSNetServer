@@ -2,6 +2,7 @@
 
 WORKDIR=$1
 
+cd $WORKDIR
 cd container
 source setup_container.sh
 
