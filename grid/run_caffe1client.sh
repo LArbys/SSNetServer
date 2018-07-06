@@ -34,7 +34,7 @@ final_outfile=`printf %s/%s ${OUTDIR} ${local_outfile}`
 
 # setup work environment
 mkdir -p ${jobdir}
-cp *.py ${jobdir}/
+cp /usr/local/ssnetserver/*.py ${jobdir}/
 cd ${jobdir}
 
 echo "python start_caffe_client.py --identity ${SLURM_ARRAY_TASK_ID} --broker ${BROKER} -p $PORT -f ${inputfile} -o ${local_outfile} -s ${start} -e ${end} -t ${TREENAME}"

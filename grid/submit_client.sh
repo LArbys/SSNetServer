@@ -17,10 +17,10 @@ BROKER=10.246.81.73 # PGPU03
 # BROKER=10.X.X.X # ALPHA001
 
 PORT=5559
-OUTDIR_IN_CONTAINER=${WORKDIR_IN_CONTAINER}/grid
-JOBLIST=${WORKDIR_IN_CONTAINER}/container/joblist.txt   # made with either make_large_file_jobs.py or make_jobs_from_inputdirs.py
-RUNLIST=${WORKDIR_IN_CONTAINER}/container/rerunlist.txt # map of taskid to job: {line in file=taskid : value of job=line in joblist}
+OUTDIR_IN_CONTAINER=${WORKDIR_IN_CONTAINER}/grid/output
+JOBLIST=${WORKDIR_IN_CONTAINER}/grid/joblist.txt   # made with either make_large_file_jobs.py or make_jobs_from_inputdirs.py
+RUNLIST=${WORKDIR_IN_CONTAINER}/grid/rerunlist.txt # map of taskid to job: {line in file=taskid : value of job=line in joblist}
 TREENAME=wire
 
 module load singularity
-singularity exec ${CONTAINER} bash -c "cd ${WORKDIR_IN_CONTAINER}/container && ./run_caffe1client.sh ${WORKDIR_IN_CONTAINER} ${BROKER} ${PORT} ${OUTDIR_IN_CONTAINER} ${JOBLIST} ${RUNLIST} ${TREENAME}"
+singularity exec ${CONTAINER} bash -c "cd ${WORKDIR_IN_CONTAINER}/grid && ./run_caffe1client.sh ${WORKDIR_IN_CONTAINER} ${BROKER} ${PORT} ${OUTDIR_IN_CONTAINER} ${JOBLIST} ${RUNLIST} ${TREENAME}"

@@ -14,4 +14,4 @@ CONTAINER=/cluster/kappa/90-days-archive/wongjiradlab/larbys/images/singularity-
 WORKDIR=/cluster/kappa/wongjiradlab/twongj01/ssnetserver
 
 module load singularity
-singularity exec ${CONTAINER} bash -c "cd ${WORKDIR}/container && ./run_broker.sh ${WORKDIR}"
+singularity exec ${CONTAINER} bash -c "cd ${WORKDIR}/grid && ./run_broker.sh ${WORKDIR}"

@@ -20,7 +20,7 @@ BROKER=10.246.81.73 # PGPU03
 
 PORT=5560
 
-GPU_ASSIGNMENTS=/cluster/kappa/wongjiradlab/twongj01/ssnetserver/container/gpu_assignments.txt
+GPU_ASSIGNMENTS=/cluster/kappa/wongjiradlab/twongj01/ssnetserver/grid/gpu_assignments.txt
 
 module load singularity
-singularity exec --nv ${CONTAINER} bash -c "cd ${WORKDIR}/container && ./run_caffe1worker.sh ${WORKDIR} ${BROKER} ${PORT} ${GPU_ASSIGNMENTS}"
+singularity exec --nv ${CONTAINER} bash -c "cd ${WORKDIR}/grid && ./run_caffe1worker.sh ${WORKDIR} ${BROKER} ${PORT} ${GPU_ASSIGNMENTS}"
