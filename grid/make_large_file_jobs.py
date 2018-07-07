@@ -1,7 +1,6 @@
 import os,sys
 import argparse
 import ROOT as rt
-from larcv import larcv
 
 if __name__ == "__main__":
 

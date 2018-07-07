@@ -84,6 +84,8 @@ class CaffeLArCV1Client( SSNetClient ):
         self._ttracker["getbatch::total"] = 0.0
         self._ttracker["getbatch::fileio"] = 0.0
         self._ttracker["getbatch::fill"] = 0.0
+        self._ttracker["makemessage::total"] = 0.0
+        self._ttracker["savereply::total"] = 0.0
         
 
     def get_batch( self ):
@@ -183,6 +185,8 @@ class CaffeLArCV1Client( SSNetClient ):
         this is because I do not want to deal with generating a generic message protocal right now.
         """
 
+        tmsg = time.time()
+
         msg = []
         for (ktype,name),plane_img_v in self.imgdata_dict.items():
             meta_v  = self.imgmeta_dict[name]
@@ -203,6 +207,9 @@ class CaffeLArCV1Client( SSNetClient ):
                 print "CaffeLArCV1Client[{}] sending array name=\"{}\" shape={} meta={}".format(self._identity,name,data.shape,meta.dump().strip())
                 #print "CaffeLArCV1Client[{}] compression ratio: ",com_size/msg_size
 
+        tmsg = time.time()-tmsg
+        self._ttracker["makemessage::total"] += tmsg
+
         return msg
     
 
@@ -216,6 +223,8 @@ class CaffeLArCV1Client( SSNetClient ):
         # one message contains one batch
         # this makes it a lot easier to understand
         # someone smarter can make general code
+
+        treply = time.time()
 
         plane_img_v_dict = {}
 
@@ -264,7 +273,8 @@ class CaffeLArCV1Client( SSNetClient ):
         self.io_out.clear_entry()
         self.current_rse = rse
         
-                    
+        treply = time.time()-treply 
+        self._ttracker["savereply::total"] += treply
         
     def process_events(self, start=None, end=None):
 
