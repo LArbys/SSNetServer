@@ -25,7 +25,7 @@ from workermessages import decode_larcv1_metamsg
 class CaffeLArCV1Client( SSNetClient ):
 
     def __init__(self, input_rootfile, output_rootfile, batch_size, identity, broker_ipaddress, product_dict,
-                 random_access=True, copy_input=False, port=5559, timeout_secs=30, max_tries=3,
+                 random_access=False, copy_input=False, port=5559, timeout_secs=30, max_tries=3,
                  do_compress=True, process_croi=False, print_msg_sizes=False,
                  input_croiprocessor_cfg="input_croiprocessor_default.cfg",  input_precropped_cfg="input_precropped_default.cfg",
                  output_croiprocessor_cfg="output_croiprocessor_default.cfg"):
