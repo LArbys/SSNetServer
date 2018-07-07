@@ -6,7 +6,7 @@ from workermessages import PPP_READY, PPP_HEARTBEAT
 
 class SSNetWorker(object):
 
-    def __init__(self,identity,broker_ipaddress, port=5560, heartbeat_interval_secs=2, num_missing_beats=3):
+    def __init__(self,identity,broker_ipaddress, port=5560, heartbeat_interval_secs=2, num_missing_beats=3, ssh_thru_server=None):
         self._identity = u"Worker-{}".format(identity).encode("ascii")
         self._broker_ipaddress = broker_ipaddress
         self._broker_port = port
@@ -14,6 +14,9 @@ class SSNetWorker(object):
         self._num_missing_beats  = num_missing_beats
         self._interval_init      = 1
         self._interval_max       = 32
+        if ssh_thru_server is not None and type(ssh_thru_server) is not str:
+            raise ValueError("ssh_thru_server should be a str with server address, e.g. user@server")
+        self._ssh_thru_server = ssh_thru_server
 
         self._context = zmq.Context(1)
         self._poller  = zmq.Poller()
@@ -22,12 +25,18 @@ class SSNetWorker(object):
 
     def connect_to_broker(self):
         """ create new socket. connect to server. send READY message """
+
         self._socket   = self._context.socket(zmq.DEALER)
         self._socket.setsockopt(zmq.IDENTITY, self._identity)
         self._poller.register(self._socket,zmq.POLLIN)
         
-        self._socket.connect("tcp://%s:%d"%(self._broker_ipaddress,self._broker_port))
-        print "SSNetWorker[{}] socket connected".format(self._identity)
+        if self.ssh_thru_server is None:
+            # regular connection            
+            self._socket.connect("tcp://%s:%d"%(self._broker_ipaddress,self._broker_port))
+            print "SSNetWorker[{}] socket connected".format(self._identity)
+        else:
+            ssh.tunnel_connection(self._socket, "tcp://%s:%d"%(self._broker_ipaddress,self._broker_port), self.ssh_thru_server )
+            print "SSNetWorker[{}] socket connected via ssh-tunnel".format(self._identity)
 
         self._socket.send(PPP_READY)
         print "SSNetWorker[{}] sent PPP_READY".format(self._identity)        
