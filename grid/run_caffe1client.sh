@@ -29,12 +29,13 @@ end=${array[2]}
 # go to workdir
 cd $WORKDIR
 jobdir=`printf caffeclient_proc%d_task%d ${SLURM_PROCID} ${SLURM_ARRAY_TASK_ID}`
-local_outfile=`printf output_caffeclient_proc%d_task%d.root ${SLURM_PROCID} ${SLURM_ARRAY_TASK_ID}`
+local_outfile=`printf output_caffeclient_proc%d_task%03d.root ${SLURM_PROCID} ${SLURM_ARRAY_TASK_ID}`
 final_outfile=`printf %s/%s ${OUTDIR} ${local_outfile}`
 
 # setup work environment
 mkdir -p ${jobdir}
-cp /usr/local/ssnetserver/*.py ${jobdir}/
+#cp /usr/local/ssnetserver/*.py ${jobdir}/
+cp /cluster/kappa/wongjiradlab/twongj01/ssnetserver/*.py ${jobdir}/
 cd ${jobdir}
 
 echo "python start_caffe_client.py --identity ${SLURM_ARRAY_TASK_ID} --broker ${BROKER} -p $PORT -f ${inputfile} -o ${local_outfile} -s ${start} -e ${end} -t ${TREENAME}"
