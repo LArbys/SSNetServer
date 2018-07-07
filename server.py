@@ -1,5 +1,6 @@
 from collections import OrderedDict
 import time
+import sys
 
 import zmq
 
@@ -152,6 +153,8 @@ class SSNetBroker:
             if timeout_sec>0 and time.time()-tstart>timeout_sec:
                 print "SSNetBroker: at end of life. stopping."
                 break
+
+            sys.stdout.flush()
             
         # End of main loop
         # do we tell workers to stop? 
