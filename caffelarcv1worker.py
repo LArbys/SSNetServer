@@ -20,8 +20,13 @@ from workermessages import decode_larcv1_metamsg
 class CaffeLArCV1Worker( SSNetWorker ):
     """ This worker simply receives data and replies with dummy string. prints shape of array. """
 
-    def __init__( self, identity,broker_ipaddress, port=5560, heartbeat_interval_secs=2, num_missing_beats=3, gpuid=0, weight_dir="/tmp", model_dir="/tmp"):
-        super( CaffeLArCV1Worker, self ).__init__(identity,broker_ipaddress, port=port, heartbeat_interval_secs=heartbeat_interval_secs, num_missing_beats=num_missing_beats)
+    def __init__( self, identity,broker_ipaddress,
+                  gpuid=0, weight_dir="/tmp", model_dir="/tmp", 
+                  port=5560, heartbeat_interval_secs=2, num_missing_beats=3,
+                  ssh_thru_server=None, print_msg_size=False, reply_in_float16=True ):
+        super( CaffeLArCV1Worker, self ).__init__(identity,broker_ipaddress,
+                                                  port=port, heartbeat_interval_secs=heartbeat_interval_secs, num_missing_beats=num_missing_beats,
+                                                  ssh_thru_server=ssh_thru_server)
         self.shape_dict = {}
 
         # SSNET MODEL USED IN 2018 MICROBOONE PAPER
@@ -48,6 +53,12 @@ class CaffeLArCV1Worker( SSNetWorker ):
 
         # compression level
         self.compression_level = 6
+
+        # print msg size (for debug and cost estimation)
+        self.print_msg_size = print_msg_size
+
+        # reply in float16 (half-precision)
+        self.reply_in_float16 = reply_in_float16
         
         # SET THE GPUID
         caffe.set_mode_gpu()
@@ -100,6 +111,8 @@ class CaffeLArCV1Worker( SSNetWorker ):
         """
         
         reply = []
+        totmsgsize = 0.0
+        totcompsize = 0.0        
         for key,shape in self.shape_dict.items():
 
             name    = key[0]
@@ -110,7 +123,14 @@ class CaffeLArCV1Worker( SSNetWorker ):
             img   = self.image_dict[key]
 
             msg_batchsize = shape[0]
-            ssnetout = np.zeros( (shape[0],self.NCLASSES,shape[2],shape[3]), dtype=np.float32 )
+
+            # prepare numpy array for output
+            # note, we through away the background scores to save egress data
+            # we save results in half-precision. since numbers between [0,1] precision still good to 2^-11 at worse
+            if not self.reply_in_float16:
+                ssnetout = np.zeros( (shape[0],self.NCLASSES-1,shape[2],shape[3]), dtype=np.float16 )
+            else:
+                ssnetout = np.zeros( (shape[0],self.NCLASSES-1,shape[2],shape[3]), dtype=np.float32 )
 
             blobshape = ( self.BATCHSIZE, 1, shape[2], shape[3] )
 
@@ -126,25 +146,35 @@ class CaffeLArCV1Worker( SSNetWorker ):
                     remaining = msg_batchsize % self.BATCHSIZE
                     start = ibatch*self.BATCHSIZE
                     end   = ibatch*self.BATCHSIZE+remaining
-                    ssnetout[start:end,:] = self.nets[planeid].blobs['softmax'].data[0:remaining,:]
+                    if self.reply_in_float16:                    
+                        ssnetout[start:end,:] = self.nets[planeid].blobs['softmax'].data[0:remaining,:].astype(np.float16)
+                    else:
+                        ssnetout[start:end,:] = self.nets[planeid].blobs['softmax'].data[0:remaining,:]
                 else:
                     start = ibatch*self.BATCHSIZE
                     end   = (ibatch+1)*self.BATCHSIZE
-                    ssnetout[start:end,:] = self.nets[planeid].blobs['softmax'].data[0:self.BATCHSIZE,:]
+                    if self.reply_in_float16:
+                        ssnetout[start:end,:] = self.nets[planeid].blobs['softmax'].data[0:self.BATCHSIZE,1:,:].astype(np.float16)
+                    else:
+                        ssnetout[start:end,:] = self.nets[planeid].blobs['softmax'].data[0:self.BATCHSIZE,1:,:]
 
                 # we threshold score images so compression performs better
                 outslice = ssnetout[start:end,:]
                 for c in range(outslice.shape[1]):
                     chslice = outslice[:,c,:].reshape( (1,1,imgslice.shape[2],imgslice.shape[3]) )
-                    chslice[ imgslice<5.0 ] = 0
+                    chslice[ imgslice<10.0 ] = 0
                 
             # encode
             x_enc = msgpack.packb( ssnetout, default=m.encode )
             x_comp = zlib.compress(x_enc,self.compression_level)
 
             # for debug: inspect compression gains (usually reduction to 1% or lower of original size)
-            encframe = zmq.Frame(x_enc)
-            comframe = zmq.Frame(x_comp)
+            if self.print_msg_size:
+                encframe = zmq.Frame(x_enc)
+                comframe = zmq.Frame(x_comp)
+                totmsgsize  += len(encframe.bytes)
+                totcompsize += len(comframe.bytes)
+                
 
             # make the return message
             print "CaffeLArCV1Worker[{}] preparing reply for name=\"{}\" shape={} meta={}".format(self._identity,name,ssnetout.shape,meta.dump().strip())
@@ -152,6 +182,8 @@ class CaffeLArCV1Worker( SSNetWorker ):
             reply.append( name.encode('utf-8') )
             reply.append( meta.dump().strip() )
             reply.append( x_comp )
+
+        print "CaffeLArCV1Worker[{}] finished reply for name=\"{}\". size of array portion={} MB (uncompressed {} MB)".format(self._identity,name,totcompsize/1.0e6,totmsgsize/1.0e6)
 
         return reply
         

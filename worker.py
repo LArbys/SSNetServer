@@ -30,12 +30,12 @@ class SSNetWorker(object):
         self._socket.setsockopt(zmq.IDENTITY, self._identity)
         self._poller.register(self._socket,zmq.POLLIN)
         
-        if self.ssh_thru_server is None:
+        if self._ssh_thru_server is None:
             # regular connection            
             self._socket.connect("tcp://%s:%d"%(self._broker_ipaddress,self._broker_port))
             print "SSNetWorker[{}] socket connected".format(self._identity)
         else:
-            ssh.tunnel_connection(self._socket, "tcp://%s:%d"%(self._broker_ipaddress,self._broker_port), self.ssh_thru_server )
+            ssh.tunnel_connection(self._socket, "tcp://%s:%d"%(self._broker_ipaddress,self._broker_port), self._ssh_thru_server )
             print "SSNetWorker[{}] socket connected via ssh-tunnel".format(self._identity)
 
         self._socket.send(PPP_READY)
