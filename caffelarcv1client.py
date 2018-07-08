@@ -169,7 +169,7 @@ class CaffeLArCV1Client( SSNetClient ):
             
         else:
             # sequential
-            if self.delivered+self.batch_size>=self.entries:
+            if self.delivered+self.batch_size>=self.nentries:
                 self.permuted = np.arange( self.nentries, dtype=np.int )
                 self.delivered = 0
         self._ttracker["getbatch::indexing"] += time.time()-tindex
