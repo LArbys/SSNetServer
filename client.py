@@ -53,7 +53,12 @@ class SSNetClient(object):
 
     def send_receive(self):
 
-        self.get_batch()
+        batchok = self.get_batch()
+        if batchok==False:
+            return False
+        elif batchok is None:
+            self.process_reply( None )
+            return True
         msg = self.make_outgoing_message()
         
         retries_left = self._max_tries
@@ -112,5 +117,5 @@ class SSNetClient(object):
         print "=============  TimeTracker =============="
         print "number of messages: ",self.nmsgs
         for k,v in self._ttracker.items():
-            print k,": ",v," secs total",
+            print k,": ",v," secs total"
         print "========================================="

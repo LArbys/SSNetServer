@@ -30,6 +30,9 @@ fi
 cd larlite
 source config/setup.sh
 
+cd ../Geo2D/
+source config/setup.sh
+
 cd ../larcv1
 source configure.sh
 

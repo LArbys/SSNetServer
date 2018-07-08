@@ -106,7 +106,7 @@ class CaffeLArCV1Client( SSNetClient ):
         self.randomize = random_access
         self.last_entry = 0
         self.delivered = 0
-        self.permuted = np.random.permutation( self.nentries )
+        self.permuted = None
         self.totserved = 0
         self.compression_level = 6
         self.print_msg_sizes = print_msg_sizes
@@ -160,7 +160,7 @@ class CaffeLArCV1Client( SSNetClient ):
 
         tindex = time.time()
         if self.randomize:
-            if self.delivered+self.batch_size>=self.nentries:
+            if self.delivered+self.batch_size>=self.nentries or self.permuted is None:
                 # refresh the permutated event indices
                 self.permuted = np.random.permutation( self.nentries )
                 # reset the delivered count
@@ -169,7 +169,7 @@ class CaffeLArCV1Client( SSNetClient ):
             
         else:
             # sequential
-            if self.delivered+self.batch_size>=self.entries:
+            if self.delivered+self.batch_size>=self.nentries or self.permuted is None:
                 self.permuted = np.arange( self.nentries, dtype=np.int )
                 self.delivered = 0
         self._ttracker["getbatch::indexing"] += time.time()-tindex
@@ -252,7 +252,7 @@ class CaffeLArCV1Client( SSNetClient ):
 
         tindex = time.time()
         if self.randomize:
-            if self.delivered+self.batch_size>=self.nentries:
+            if self.delivered+self.batch_size>=self.nentries or self.permuted is None:
                 # refresh the permutated event indices
                 self.permuted = np.random.permutation( self.nentries )
                 # reset the delivered count
@@ -261,7 +261,7 @@ class CaffeLArCV1Client( SSNetClient ):
             
         else:
             # sequential
-            if self.delivered+self.batch_size>=self.nentries:
+            if self.delivered+self.batch_size>=self.nentries or self.permuted is None:
                 self.permuted = np.arange( self.nentries, dtype=np.int )
                 self.delivered = 0
         self._ttracker["getbatch::indexing"] += time.time()-tindex
@@ -282,6 +282,11 @@ class CaffeLArCV1Client( SSNetClient ):
             tread = time.time()
             self.in_proc.process_entry(index,True)
 
+            # get rse
+            eventid = self.in_proc.event_id()
+            rse = (eventid.run(), eventid.subrun(), eventid.event() )
+            self.batch2rse[i] = rse
+
             # now we get the images from the cropper. one vector of cropped images per plane
             # ------------------------------------------------------------------------------
             plane_vv = [ self.croicroppers[p].get_cropped_image() for p in range(self.NPLANES)  ]
@@ -295,9 +300,10 @@ class CaffeLArCV1Client( SSNetClient ):
                     isempty = False
                     break
             if isempty:
-                # no images in this event. still, move up the delivered count. return False.
+                # no images in this event. still, move up the delivered count. return None.
                 self.delivered += 1
-                return False
+                print "CaffeLArCV1Client[{}] empty set of crops for this entry".format(self._identity),": ",rse
+                return None
             self._ttracker["getbatch::fileio"] += time.time()-tread                       
 
             # we store the images in numpy format in the class members
@@ -308,11 +314,6 @@ class CaffeLArCV1Client( SSNetClient ):
             heights = [ plane_v.front().meta().rows() for plane_v in plane_vv ]
             widths  = [ plane_v.front().meta().cols() for plane_v in plane_vv ]
             
-            # get rse
-            eventid = self.in_proc.event_id()
-            rse = (eventid.run(), eventid.subrun(), eventid.event() )
-            self.batch2rse[i] = rse
-
             # fill numpy arrays and metas
             for p,plane_v in enumerate(plane_vv):
                 for ii in range(nimgs[p]):
@@ -325,9 +326,9 @@ class CaffeLArCV1Client( SSNetClient ):
         self.delivered += self.batch_size
         self._ttracker["getbatch::total"] += time.time()-tbatch
 
-        for n,t in self._ttracker.items():
-            if "getbatch" in n:
-                print "%s : %.2f secs : %.2f secs/batch : %.2f secs/img"%(n, t, t/(self.delivered/self.batch_size), t/self.delivered)
+        #for n,t in self._ttracker.items():
+        #    if "getbatch" in n:
+        #        print "%s : %.2f secs : %.2f secs/batch : %.2f secs/img"%(n, t, t/(self.delivered/self.batch_size), t/self.delivered)
                     
         return self.imgdata_dict
     
@@ -454,8 +455,20 @@ class CaffeLArCV1Client( SSNetClient ):
         # this makes it a lot easier to understand
         # someone smarter can make general code
 
-        treply = time.time()
+        # first, set the rse values for the entry
+        rse = self.batch2rse[0]            
+        for pim in self.py_image_makers:
+            pim.set_id(rse[0], rse[1], rse[2])
 
+        if frames is None:
+            # save an empty event     
+            out_proc.process_entry()
+            print "CaffeLArCV1Client[{}] saved an empty entry"
+            return
+                                                
+        
+        treply = time.time()
+        
         parts = len(frames)
         for i in range(0,parts,3):
             name    = frames[i].decode("ascii")
@@ -474,9 +487,6 @@ class CaffeLArCV1Client( SSNetClient ):
             for out_ch in [0,1]:
                 self.py_image_makers[planeid].append_ndarray_meta( arr[0,out_ch,:], meta, out_ch+1 )
             
-        rse = self.batch2rse[0]            
-        for pim in self.py_image_makers:
-            pim.set_id(rse[0], rse[1], rse[2])
         self.out_proc.process_entry()
         
         # make output event containers
@@ -495,8 +505,9 @@ class CaffeLArCV1Client( SSNetClient ):
 
         for ientry in range(start,end):
             ok = self.send_receive()
-            if not ok:
+            if ok is False:
                 raise RuntimeError("Trouble processing event")
+            self.print_time_tracker()
 
         tprocess = time.time()-tprocess
         print "Time to run CaffeLArCV1Client[{}]::process_events: %.2f secs (%.2f secs/event)".format(self._identity)%(tprocess,tprocess/(end-start))

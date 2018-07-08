@@ -14,9 +14,10 @@ NBR_WORKERS=1
 def start_client(ident,fname_in, fname_out,batchsize):
     products = {larcv.kProductImage2D:"wire"}
     client = CaffeLArCV1Client(fname_in, fname_out, batchsize, ident, "localhost", products, process_croi=True )
-    #msg = client.send_receive() # just one batch
-    client.process_events(0,100)
+    client.process_events()
+    #client.process_events(0,10)
     client.io_out.finalize()
+    client.print_time_tracker()
 
 def start_worker(ident):
     worker = CaffeLArCV1Worker(ident,"localhost", gpuid=1, weight_dir="/mnt/disk0/taritree/larbys/ssnet_dllee_trainingdata/", model_dir="/tmp/", print_msg_size=True) # nudot
