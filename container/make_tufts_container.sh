@@ -1,6 +1,6 @@
 #!/bin/bash
 
-imgname=singularity-ssnetserver-cuda8.0-nvidia384.66.img
+imgname=singularity-ssnetserver-caffelarbys-cuda8.0.img
 
 rm -f $imgname
-sudo singularity build ${imgname} Singularity
+sudo singularity build ${imgname} SingularityNoDirvers

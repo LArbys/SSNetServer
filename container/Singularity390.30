@@ -1,5 +1,5 @@
 Bootstrap: docker
-From: twongjirad/ssnetcaffeserver:sss
+From: twongjirad/ssnetcaffeserver:sss_larbys_cuda8.0
 
 %post
   echo "START POST SCRIPT"
