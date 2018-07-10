@@ -26,8 +26,9 @@ else
     [[ ":$PYTHONPATH:" != *":${CAFFE_PYTHONDIR}:"* ]] && PYTHONPATH="${CAFFE_PYTHONDIR}:${PYTHONPATH}";
 fi
 
-# Add SSNet Server to python path
+# Add SSNet Server to python path and path
 [[ ":$PYTHONPATH:" != *":${SSNETSERVER_BASEDIR}:"* ]] && PYTHONPATH="${SSNETSERVER_BASEDIR}:${PYTHONPATH}";
+[[ ":$PATH:" != *":${SSNETSERVER_BASEDIR}:"* ]] && PATH="${SSNETSERVER_BASEDIR}:${PATH}";
 
 # SETUP SSNET SERVER
 cd /usr/local/ssnetserver
