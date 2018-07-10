@@ -6,7 +6,7 @@
 #SBATCH --mem-per-cpu=2000
 #SBATCH --time=1:00:00
 #SBATCH --cpus-per-task=1
-#SBATCH --array=10-13
+#SBATCH --array=14-15
 
 CONTAINER=/cluster/kappa/90-days-archive/wongjiradlab/larbys/images/singularity-ssnetserver/singularity-ssnetserver-cuda8.0-nvidia384.66.img
 

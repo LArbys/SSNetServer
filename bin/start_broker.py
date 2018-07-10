@@ -1,4 +1,4 @@
-#!/bin/env python
+#!/usr/bin/env python
 
 import os,sys
 import argparse
@@ -17,7 +17,6 @@ if __name__ == "__main__":
     broker = SSNetBroker("*", frontendport=args.client_port, backendport=args.worker_port)
 
     if args.timestamp_file!="":
-        start = time.time()
         with open(args.timestamp_file,'w') as f:
             strtime = strftime("%a, %d %b %Y %H:%M:%S +0000", localtime())
             print >> f,strtime
