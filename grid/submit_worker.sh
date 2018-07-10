@@ -10,7 +10,8 @@
 #SBATCH --nodelist=pgpu03
 #SBATCH --array=0-3
 
-CONTAINER=/cluster/kappa/90-days-archive/wongjiradlab/larbys/images/singularity-ssnetserver/singularity-ssnetserver-cuda8.0-nvidia384.66.img
+CONTAINER=/cluster/kappa/90-days-archive/wongjiradlab/larbys/images/singularity-ssnetserver/singularity-ssnetserver-caffelarbys-cuda8.0.img
+
 #WORKDIR=/usr/local/ssnetserver
 WORKDIR=/cluster/kappa/wongjiradlab/twongj01/ssnetserver
 
