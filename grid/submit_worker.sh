@@ -12,8 +12,8 @@
 
 CONTAINER=/cluster/kappa/90-days-archive/wongjiradlab/larbys/images/singularity-ssnetserver/singularity-ssnetserver-caffelarbys-cuda8.0.img
 
-#WORKDIR=/usr/local/ssnetserver
-WORKDIR=/cluster/kappa/wongjiradlab/twongj01/ssnetserver
+WORKDIR=/usr/local/ssnetserver
+#WORKDIR=/cluster/kappa/wongjiradlab/twongj01/ssnetserver
 
 # IP ADDRESSES OF BROKER
 BROKER=10.246.81.73 # PGPU03
@@ -21,7 +21,8 @@ BROKER=10.246.81.73 # PGPU03
 
 PORT=5560
 
-GPU_ASSIGNMENTS=/cluster/kappa/wongjiradlab/twongj01/ssnetserver/grid/gpu_assignments.txt
+#GPU_ASSIGNMENTS=/cluster/kappa/wongjiradlab/twongj01/ssnetserver/grid/gpu_assignments.txt
+GPU_ASSIGNMENTS=${WORKDIR}/grid/gpu_assignments.txt
 
 module load singularity
 singularity exec --nv ${CONTAINER} bash -c "cd ${WORKDIR}/grid && ./run_caffe1worker.sh ${WORKDIR} ${BROKER} ${PORT} ${GPU_ASSIGNMENTS}"
