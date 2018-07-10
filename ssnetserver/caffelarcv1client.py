@@ -462,7 +462,7 @@ class CaffeLArCV1Client( SSNetClient ):
 
         if frames is None:
             # save an empty event     
-            out_proc.process_entry()
+            self.out_proc.process_entry()
             print "CaffeLArCV1Client[{}] saved an empty entry"
             return
                                                 
