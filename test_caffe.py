@@ -19,7 +19,7 @@ def start_client(ident,fname_in, fname_out,batchsize):
     products = {larcv.kProductImage2D:"modimg"}
     client = CaffeLArCV1Client(fname_in, fname_out, batchsize, ident, "localhost", products, process_croi=True )
     #client.process_events()
-    client.process_events(0,10)
+    client.process_events(0,3)
     client.io_out.finalize()
     client.print_time_tracker()
 
@@ -57,7 +57,8 @@ def main():
         
         # 
         #start(start_client,i,"/mnt/disk0/taritree/larbys/ssnet_dllee_trainingdata/test_1e1p_lowE_00.root","output_test_caffe.root",1) # nudot
-        start(start_client,i,"taggerout-larcv-Run006865-SubRun000047.root","output_test_caffe.root",1) # nudotx
+        #start(start_client,i,"taggerout-larcv-Run006865-SubRun000047.root","output_test_caffe.root",1) # nudotx
+        start(start_client,i,"ssnetout-larcv-Run000001-SubRun000006.root","output_test_caffe.root",1)
         
     # start up workers
     for i in range(NBR_WORKERS):

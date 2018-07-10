@@ -416,7 +416,8 @@ class CaffeLArCV1Client( SSNetClient ):
                 rse = self.batch2rse[ib]                    
                 self.current_rse = rse
                 
-                img = larcv.as_image2d_meta( np.transpose( arr[ib,0,:], (1,0) ), meta )
+                #img = larcv.as_image2d_meta( np.transpose( arr[ib,0,:], (1,0) ), meta ) # not needed?
+                img = larcv.as_image2d_meta( arr[ib,0,:], meta )
                 print "fill ",name," meta=",meta.dump().strip()
                 plane_img_v_dict[name][meta.plane()].push_back( img )
 
