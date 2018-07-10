@@ -1,4 +1,4 @@
-import time
+import sys,time
 import zmq
 from random import randint
 
@@ -109,6 +109,9 @@ class SSNetWorker(object):
                 print "SSNetWorker[{}]: Worker sending heartbeat".format(self._identity)
                 self._socket.send(PPP_HEARTBEAT)
                 heartbeat_at = time.time() + self._heartbeat_interval                
+                
+            # flush std out
+            sys.stdout.flush()
             
 
         # end of while loop

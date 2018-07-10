@@ -1,7 +1,9 @@
+#!/usr/bin/env python
+
 import os,sys
 import argparse
 
-from caffelarcv1worker import CaffeLArCV1Worker
+from ssnetserver.caffelarcv1worker import CaffeLArCV1Worker
 
 if __name__ == "__main__":
 

@@ -2,7 +2,7 @@
 
 import os,sys
 import argparse
-from server import SSNetBroker
+from ssnetserver.server import SSNetBroker
 
 from time import localtime, strftime
 

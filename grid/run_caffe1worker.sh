@@ -1,15 +1,15 @@
 #!/bin/bash
 
-
-WORKDIR=$1
-BROKER=$2
-PORT=$3
-GPUIDLIST=$4
+SSS_BASEDIR=$1
+WORKDIR=$2
+BROKER=$3
+PORT=$4
+GPUIDLIST=$5
 
 # Go to ssnetserver folder in container
-cd $WORKDIR/container
+cd $SSS_BASEDIR/container
 # configure environment
-source setup_container.sh
+source setup_caffelarbys_container.sh
 
 # get the gpuid for this task
 let "proc_line=${SLURM_ARRAY_TASK_ID}+1"
@@ -24,7 +24,7 @@ cd $WORKDIR
 
 # start caffe worker
 # model and weight files assumed to be copied to /tmp
-echo "python start_caffe_worker.py -i ${SLURM_ARRAY_TASK_ID} -b $BROKER -p $PORT -g $gpuid -w /tmp -m /tmp"
-python start_caffe_worker.py -i ${SLURM_ARRAY_TASK_ID} -b $BROKER -p $PORT -g ${gpuid} -w /tmp -m /tmp
+echo "start_caffe_worker.py -i ${SLURM_ARRAY_TASK_ID} -b $BROKER -p $PORT -g $gpuid -w /tmp -m /tmp"
+start_caffe_worker.py -i ${SLURM_ARRAY_TASK_ID} -b $BROKER -p $PORT -g ${gpuid} -w /tmp -m /tmp
 
 
