@@ -485,7 +485,7 @@ class CaffeLArCV1Client( SSNetClient ):
             planeid = meta.plane()
             # note, the background channel is not sent back
             for out_ch in [0,1]:
-                self.py_image_makers[planeid].append_ndarray_meta( arr[0,out_ch,:], meta, out_ch+1 )
+                self.py_image_makers[planeid].append_ndarray_meta( arr[0,out_ch,:], meta, out_ch )
             
         self.out_proc.process_entry()
         
