@@ -1,6 +1,7 @@
 import sys,time
 import zmq
 from random import randint
+from zmq import ssh
 
 from workermessages import PPP_READY, PPP_HEARTBEAT
 
