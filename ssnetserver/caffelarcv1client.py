@@ -160,7 +160,7 @@ class CaffeLArCV1Client( SSNetClient ):
 
         tindex = time.time()
         if self.randomize:
-            if self.delivered+self.batch_size>=self.nentries or self.permuted is None:
+            if self.delivered+self.batch_size>self.nentries or self.permuted is None:
                 # refresh the permutated event indices
                 self.permuted = np.random.permutation( self.nentries )
                 # reset the delivered count
@@ -169,7 +169,8 @@ class CaffeLArCV1Client( SSNetClient ):
             
         else:
             # sequential
-            if self.delivered+self.batch_size>=self.nentries or self.permuted is None:
+            if self.delivered+self.batch_size>self.nentries or self.permuted is None:
+                print "resetting batch index. delivered=%d+batchsize=%d > nentries=%d"%(self.delivered,self.batch_size,self.nentries)
                 self.permuted = np.arange( self.nentries, dtype=np.int )
                 self.delivered = 0
         self._ttracker["getbatch::indexing"] += time.time()-tindex
@@ -183,7 +184,7 @@ class CaffeLArCV1Client( SSNetClient ):
         self.batch2rse = {} # map from batch to (run,subrun,event)
         for i,index in enumerate(self.permuted[self.delivered:self.delivered+self.batch_size]):
 
-            print "batchindex=%d, entryindex=%d"%(i,index)
+            print "batchindex=%d, entryindex=%d, delivered=%d"%(i,index,self.delivered)
             
             # read entry
             tread = time.time()
@@ -252,7 +253,7 @@ class CaffeLArCV1Client( SSNetClient ):
 
         tindex = time.time()
         if self.randomize:
-            if self.delivered+self.batch_size>=self.nentries or self.permuted is None:
+            if self.delivered+self.batch_size>self.nentries or self.permuted is None:
                 # refresh the permutated event indices
                 self.permuted = np.random.permutation( self.nentries )
                 # reset the delivered count
@@ -261,7 +262,8 @@ class CaffeLArCV1Client( SSNetClient ):
             
         else:
             # sequential
-            if self.delivered+self.batch_size>=self.nentries or self.permuted is None:
+            if self.delivered+self.batch_size>self.nentries or self.permuted is None:
+                print "resetting batch index. delivered=%d+batchsize=%d > nentries=%d"%(self.delivered,self.batch_size,self.nentries)
                 self.permuted = np.arange( self.nentries, dtype=np.int )
                 self.delivered = 0
         self._ttracker["getbatch::indexing"] += time.time()-tindex
@@ -275,7 +277,7 @@ class CaffeLArCV1Client( SSNetClient ):
         self.imgmeta_dict = OrderedDict()
         for i,index in enumerate(self.permuted[self.delivered:self.delivered+self.batch_size]):
 
-            print "batchindex=%d, entryindex=%d"%(i,index)
+            print "batchindex=%d, entryindex=%d, delivered=%d"%(i,index,self.delivered)
             
             # run the process driver for our entry
             # ------------------------------------            
