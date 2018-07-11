@@ -5,6 +5,7 @@ WORKDIR=$2
 BROKER=$3
 PORT=$4
 GPUIDLIST=$5
+WORKER_OFFSET=$6
 
 # Go to ssnetserver folder in container
 cd $SSS_BASEDIR/container
@@ -18,13 +19,14 @@ let gpuid=`sed -n ${proc_line}p ${GPUIDLIST}`
 echo "SLURM_PROCID ${SLURM_PROCID}"
 echo "SLURM_ARRAY_TASK_ID ${SLURM_ARRAY_TASK_ID}"
 echo "GPUID ${gpuid}"
+let "WORKER_ID=${WORKER_OFFSET}+${SLURM_ARRAY_TASK_ID}"
 
 # go back to ssnetserver folder
 cd $WORKDIR
 
 # start caffe worker
 # model and weight files assumed to be copied to /tmp
-echo "start_caffe_worker.py -i ${SLURM_ARRAY_TASK_ID} -b $BROKER -p $PORT -g $gpuid -w /tmp -m /tmp"
-start_caffe_worker.py -i ${SLURM_ARRAY_TASK_ID} -b $BROKER -p $PORT -g ${gpuid} -w /tmp -m /tmp
+echo "start_caffe_worker.py -i ${WORKER_ID} -b $BROKER -p $PORT -g $gpuid -w /tmp -m /tmp"
+start_caffe_worker.py -i ${WORKER_ID} -b $BROKER -p $PORT -g ${gpuid} -w /tmp -m /tmp
 
 

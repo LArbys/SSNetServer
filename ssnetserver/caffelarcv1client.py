@@ -416,7 +416,8 @@ class CaffeLArCV1Client( SSNetClient ):
                 rse = self.batch2rse[ib]                    
                 self.current_rse = rse
                 
-                img = larcv.as_image2d_meta( np.transpose( arr[ib,0,:], (1,0) ), meta )
+                #img = larcv.as_image2d_meta( np.transpose( arr[ib,0,:], (1,0) ), meta ) # not needed?
+                img = larcv.as_image2d_meta( arr[ib,0,:], meta )
                 print "fill ",name," meta=",meta.dump().strip()
                 plane_img_v_dict[name][meta.plane()].push_back( img )
 
@@ -462,7 +463,7 @@ class CaffeLArCV1Client( SSNetClient ):
 
         if frames is None:
             # save an empty event     
-            out_proc.process_entry()
+            self.out_proc.process_entry()
             print "CaffeLArCV1Client[{}] saved an empty entry"
             return
                                                 
@@ -485,7 +486,7 @@ class CaffeLArCV1Client( SSNetClient ):
             planeid = meta.plane()
             # note, the background channel is not sent back
             for out_ch in [0,1]:
-                self.py_image_makers[planeid].append_ndarray_meta( arr[0,out_ch,:], meta, out_ch+1 )
+                self.py_image_makers[planeid].append_ndarray_meta( arr[0,out_ch,:], meta, out_ch )
             
         self.out_proc.process_entry()
         
