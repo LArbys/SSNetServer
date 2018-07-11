@@ -15,8 +15,8 @@ export OPENCV_INCDIR=/usr/local/include
 export OPENCV_LIBDIR=/usr/local/lib
 
 # SSNET SERVER
-export SSNETSERVER_BASEDIR=/usr/local/ssnetserver
-#export SSNETSERVER_BASEDIR=/cluster/kappa/wongjiradlab/twongj01/ssnetserver
+#export SSNETSERVER_BASEDIR=/usr/local/ssnetserver
+export SSNETSERVER_BASEDIR=/cluster/kappa/wongjiradlab/twongj01/ssnetserver
 echo "SSNETSERVER_BASEDIR=${SSNETSERVER_BASEDIR}"
 
 # Add Caffe to Paths
