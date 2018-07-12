@@ -18,28 +18,48 @@ import caffe
 
 from workermessages import decode_larcv1_metamsg
 
-class PlaneNetworkWorker(threading.Thread):
+def TO_PLANE_SOCKET(identity,bind=False):
+    if bind:
+        return "tcp://*:5554"
+    else:
+        return "tcp://localhost:5554"
+
+def TO_MAIN_SOCKET(identity,planeid,bind=False):
+    if bind:
+        return "tcp://*:%d"%(5000+planeid)
+    else:
+        return "tcp://localhost:%d"%(5000+planeid)
+
+def SYNC_SOCKET(identity,bind=False):
+    if bind:
+        return "tcp://*:5557"
+    else:
+        return "tcp://localhost:5557"
+
+#class PlaneNetworkWorker(threading.Thread):
+class PlaneNetworkWorker:
 
     def __init__(self, context, identity, planeid, gpuid, weightfile, modelfile ):
         """ This class is to be run on a separate thread """
-        super(PlaneNetworkWorker,self).__init__()
+        #super(PlaneNetworkWorker,self).__init__()
         
         # bind sockets
-        self._context  = context
+        #self._context  = context
+        self._context = zmq.Context()
 
         # socket from main thread to network (this) thread
         self._incoming = self._context.socket(zmq.SUB)
-        self._incoming.connect("inproc://worker{}_incoming".format(identity))
+        self._incoming.connect(TO_PLANE_SOCKET(identity))
         self._incoming.setsockopt(zmq.SUBSCRIBE,"plane%d"%(planeid)) # subscribe only to plane messages
 
         # socket from network thread back to main thread
         self._outgoing = self._context.socket(zmq.PUB)
         self._outgoing.sndhwm = 1100000
-        self._outgoing.bind("inproc://worker{}_plane{}_outgoing".format(identity,planeid))
+        self._outgoing.bind(TO_MAIN_SOCKET(identity,planeid,bind=True))
 
         # socket to sync with main thread
         self._sync = self._context.socket(zmq.REQ)
-        self._sync.connect("inproc://synctomain{}".format(identity))
+        self._sync.connect(SYNC_SOCKET(identity))
         
         # config
         self.reply_in_float16 = True
@@ -163,7 +183,7 @@ class PlaneNetworkWorker(threading.Thread):
 def start_worker( context, identity, planeid, gpuid, weightfile, modelfile ):
 
     worker = PlaneNetworkWorker( context, identity, planeid, gpuid, weightfile, modelfile )
-    worker.do_work()
+    worker.run()
 
     
 class CaffeLArCV1ThreadedWorker( SSNetWorker ):
@@ -210,8 +230,8 @@ class CaffeLArCV1ThreadedWorker( SSNetWorker ):
         self.reply_in_float16 = reply_in_float16
         
         # SET THE GPUID
-        caffe.set_mode_gpu()
-        caffe.set_device(self.GPUID)
+        #caffe.set_mode_gpu()
+        #caffe.set_device(self.GPUID)
 
         
         # Create the threads
@@ -220,16 +240,19 @@ class CaffeLArCV1ThreadedWorker( SSNetWorker ):
         # create socket to send to the workers
         self.outgoing = self.workercontext.socket(zmq.PUB)
         self.outgoing.sndhwm = 1100000
-        self.outgoing.bind( "inproc://worker{}_incoming".format(self._identity) )
+        print "CaffeLArCV1ThreadedWorker[{}]: bind {}".format(self._identity,TO_PLANE_SOCKET(self._identity))
+        self.outgoing.bind( TO_PLANE_SOCKET(self._identity,bind=True) )
+
+        # create socket to sync main thread with workers
         self.syncworkers = self.workercontext.socket(zmq.REP)
-        print "inproc://synctomain{}".format(self._identity)        
-        self.syncworkers.bind("inproc://synctomain{}".format(self._identity))
+        print "CaffeLArCV1ThreadedWorker[{}]: bind {}".format(self._identity,SYNC_SOCKET(self._identity))
+        self.syncworkers.bind(SYNC_SOCKET(self._identity,bind=True))
 
         # create sockets from workers
         self.incoming = self.workercontext.socket(zmq.SUB)
         for p in range(self.NPLANES):
-            print "CaffeLArCV1ThreadedWorker[{}]: inproc://worker{}_plane{}_outgoing".format(self._identity,self._identity,p)
-            self.incoming.connect("inproc://worker{}_plane{}_outgoing".format(self._identity,p))
+            print "CaffeLArCV1ThreadedWorker[{}]: connect {}".format( self._identity, TO_MAIN_SOCKET(self._identity,p))
+            self.incoming.connect( TO_MAIN_SOCKET(self._identity,p) )
             self.incoming.setsockopt(zmq.SUBSCRIBE,"plane%d"%(p))            
 
         # -- worker planes
@@ -237,13 +260,18 @@ class CaffeLArCV1ThreadedWorker( SSNetWorker ):
         self.plane_processes = []
 
         for p in range(self.NPLANES):
-            #process = multiprocessing.Process(target=start_worker,args=(self.workercontext, self._identity, p, gpuid, self.WEIGHTS[p], self.MODEL_PROTOTXT))
-            #process.daemon = True
-            #process.start()
-            process = PlaneNetworkWorker( self.workercontext, self._identity, p, gpuid, self.WEIGHTS[p], self.MODEL_PROTOTXT )
+            # sub-process way
+            process = multiprocessing.Process(target=start_worker,args=(self.workercontext, self._identity, p, gpuid, self.WEIGHTS[p], self.MODEL_PROTOTXT))
             process.daemon = True
-            print "CaffeLArCV1ThreadedWorker[{}] start worker thread".format(self._identity)                                        
             process.start()
+
+            # Thread way
+            #process = PlaneNetworkWorker( self.workercontext, self._identity, p, gpuid, self.WEIGHTS[p], self.MODEL_PROTOTXT )
+            #process.daemon = True
+            #print "CaffeLArCV1ThreadedWorker[{}] start worker thread".format(self._identity)                                        
+            #process.start()
+
+            # append to processes
             self.plane_processes.append( process )
 
         nworkers_ready = 0

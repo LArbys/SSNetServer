@@ -19,7 +19,7 @@ def start_client(ident,fname_in, fname_out,batchsize):
     products = {larcv.kProductImage2D:"modimg"}
     client = CaffeLArCV1Client(fname_in, fname_out, batchsize, ident, "localhost", products, process_croi=True )
     #client.process_events()
-    client.process_events(0,3)
+    client.process_events(0,10)
     client.io_out.finalize()
     client.print_time_tracker()
 
