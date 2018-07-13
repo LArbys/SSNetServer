@@ -97,7 +97,7 @@ class SSNetWorker(object):
                         interval *= 2
 
                     # reset connection to broker
-                    poller.unregister(self._socket)
+                    self._poller.unregister(self._socket)
                     self._socket.setsockopt(zmq.LINGER, 0)
                     self._socket.close()
                     self.connect_to_broker()
