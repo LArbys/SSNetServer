@@ -5,7 +5,7 @@ WORKDIR=/usr/local/ssnetserver
 BROKER=10.246.81.73
 PORT=5560
 GPUIDLIST=${SSS_BASEDIR}/grid/gcp_gpu_assignments.txt
-WORKER_OFFSET=500
+WORKER_OFFSET=1000
 PID=$1
 
 # Go to ssnetserver folder in container
