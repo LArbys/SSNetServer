@@ -7,7 +7,7 @@ from workermessages import PPP_READY, PPP_HEARTBEAT
 
 class SSNetWorker(object):
 
-    def __init__(self,identity,broker_ipaddress, port=5560, heartbeat_interval_secs=2, num_missing_beats=3, ssh_thru_server=None):
+    def __init__(self,identity,broker_ipaddress, port=5560, timeout_secs=30, heartbeat_interval_secs=2, num_missing_beats=3, ssh_thru_server=None):
         self._identity = u"Worker-{}".format(identity).encode("ascii")
         self._broker_ipaddress = broker_ipaddress
         self._broker_port = port
@@ -15,6 +15,7 @@ class SSNetWorker(object):
         self._num_missing_beats  = num_missing_beats
         self._interval_init      = 1
         self._interval_max       = 32
+        self._timeout_secs = timeout_secs
         if ssh_thru_server is not None and type(ssh_thru_server) is not str:
             raise ValueError("ssh_thru_server should be a str with server address, e.g. user@server")
         self._ssh_thru_server = ssh_thru_server
@@ -50,7 +51,7 @@ class SSNetWorker(object):
         
         while True:
 
-            socks = dict(self._poller.poll(self._heartbeat_interval * 1000))
+            socks = dict(self._poller.poll(self._timeout_secs * 1000))
 
             # Handle worker activity on backend
             if socks.get(self._socket) == zmq.POLLIN:
