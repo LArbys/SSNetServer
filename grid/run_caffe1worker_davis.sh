@@ -1,7 +1,10 @@
 #!/bin/bash
 
+# CHANGE THESE
 SSS_BASEDIR=/home/taritree/working/ssnetserver
 WORKDIR=/home/taritree/working/ssnetserver/grid
+FASTX_USERNAME=twongj01
+
 BROKER=10.246.81.73
 PORT=5560
 GPUIDLIST=${SSS_BASEDIR}/grid/davis_gpu_assignments.txt
@@ -29,7 +32,7 @@ cd $WORKDIR
 #do
 let "WORKER_ID=${WORKER_OFFSET}+${PID}"
 echo "start_caffe_worker.py -i ${WORKER_ID} -b $BROKER -p $PORT -g $gpuid -w /tmp -m /tmp"
-start_caffe_worker.py -i ${WORKER_ID} -b $BROKER -p $PORT -g ${gpuid} -w /tmp -m /tmp --ssh twongj01@fastx-dev.cluster.tufts.edu
+start_caffe_worker.py -i ${WORKER_ID} -b $BROKER -p $PORT -g ${gpuid} -w /tmp -m /tmp --ssh ${FASTX_USERNAME}@fastx-dev.cluster.tufts.edu
 #done
 
 
