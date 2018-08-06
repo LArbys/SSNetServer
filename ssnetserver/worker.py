@@ -93,7 +93,7 @@ class SSNetWorker(object):
                     print "ssNetWorker[{}]: Reconnecting in %0.2fs..." % interval
                     time.sleep(interval)
 
-                    if interval < INTERVAL_MAX:
+                    if interval < self.INTERVAL_MAX:
                         interval *= 2
 
                     # reset connection to broker
