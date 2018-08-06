@@ -4,7 +4,7 @@ SSS_BASEDIR=/home/taritree/working/ssnetserver
 WORKDIR=/home/taritree/working/ssnetserver/grid
 BROKER=10.246.81.73
 PORT=5560
-GPUIDLIST=/home/taritree/working/ssnetserver/grid/davis_gpu_assignments.txt
+GPUIDLIST=${SSS_BASEDIR}/grid/davis_gpu_assignments.txt
 WORKER_OFFSET=500
 PID=$1
 
@@ -14,11 +14,10 @@ cd $SSS_BASEDIR/container
 source setup_caffelarbys_container.sh
 
 # get the gpuid for this task
-let "proc_line=${SLURM_ARRAY_TASK_ID}+1"
+let "proc_line=${PID}+1"
 echo "sed -n ${proc_line}p ${GPUIDLIST}"
 let gpuid=`sed -n ${proc_line}p ${GPUIDLIST}`
-echo "SLURM_PROCID ${SLURM_PROCID}"
-echo "SLURM_ARRAY_TASK_ID ${SLURM_ARRAY_TASK_ID}"
+echo "PID ${PID}"
 echo "GPUID ${gpuid}"
 
 # go back to ssnetserver folder
