@@ -22,10 +22,11 @@ class CaffeLArCV1Worker( SSNetWorker ):
 
     def __init__( self, identity,broker_ipaddress,
                   gpuid=0, weight_dir="/tmp", model_dir="/tmp", 
-                  port=5560, heartbeat_interval_secs=2, num_missing_beats=3,
+                  port=5560, heartbeat_interval_secs=2, num_missing_beats=3, timeout_secs=30,
                   ssh_thru_server=None, print_msg_size=False, reply_in_float16=True ):
         super( CaffeLArCV1Worker, self ).__init__(identity,broker_ipaddress,
-                                                  port=port, heartbeat_interval_secs=heartbeat_interval_secs, num_missing_beats=num_missing_beats,
+                                                  port=port, heartbeat_interval_secs=heartbeat_interval_secs,
+                                                  num_missing_beats=num_missing_beats, timeout_secs=timeout_secs,
                                                   ssh_thru_server=ssh_thru_server)
         self.shape_dict = {}
 
