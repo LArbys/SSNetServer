@@ -126,13 +126,6 @@ class SSNetBroker:
                     print "SSNetBroker: route worker {} result back to client {}".format( address.decode("ascii"), msg[0].decode("ascii") )
                     self._frontend.send_multipart(msg)
 
-                # Send heartbeats to idle workers if it's time
-                if time.time() >= heartbeat_at:
-                    for worker in self._workers.queue:
-                        msg = [worker, PPP_HEARTBEAT]
-                        self._backend.send_multipart(msg)
-                    heartbeat_at = time.time() + self._heartbeat_interval
-
             # Handle frontend requests
             if socks.get(self._frontend) == zmq.POLLIN:
                 frames = self._frontend.recv_multipart()
@@ -140,9 +133,21 @@ class SSNetBroker:
                     print "SSNetBroker: error in frontend frame"
                     break
                 frames.insert(0, self._workers.next())
-                print "SSNetBroker: send job for {} to {}".format(frames[1].decode("ascii"),frames[0].decode("ascii"))
+                #print "SSNetBroker: send job for {} to {}".format(frames[1].decode("ascii"),frames[0].decode("ascii"))
+                print "SSNetBroker: send job for {} to {}".format(frames[1],frames[0])
                 self._backend.send_multipart(frames)
 
+            # Send heartbeats to idle workers if it's time
+            print "heartbeat"
+            if time.time() >= heartbeat_at:
+                for worker in self._workers.queue:
+                    print "SSNetBroker: send heartbeat"
+                    msg = [worker, PPP_HEARTBEAT]
+                    self._backend.send_multipart(msg)
+                heartbeat_at = time.time() + self._heartbeat_interval
+            else:
+                print "time to next heartbeat: ",heartbeat_at-time.time()," secs"
+                
             # purge expired workers
             self._workers.purge()
             print "SSNetBroker: purged. in queue=",len(self._workers)

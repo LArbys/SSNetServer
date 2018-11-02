@@ -23,19 +23,19 @@ def start_client(ident,fname_in, fname_out,batchsize):
     client.io_out.finalize()
     client.print_time_tracker()
 
-def start_worker(ident,machine):
+def start_worker(ident,gpuid,machine):
     # because I am lazy I have saved some machine-specific configs,
     #  so I don't have to update this file everytime I switch machines.
     print("SETTING UP WORKER FOR %s"%(machine))
     if machine.strip()=="nunet":
         print("nunet setup")
-        worker = CaffeLArCV1Worker(ident,"localhost", gpuid=1, weight_dir="/mnt/disk0/taritree/larbys/ssnet_dllee_trainingdata/", model_dir="/tmp/", print_msg_size=True) # nudot
+        worker = CaffeLArCV1Worker(ident,"localhost", gpuid=gpuid, weight_dir="/mnt/disk0/taritree/larbys/ssnet_dllee_trainingdata/", model_dir="/tmp/", print_msg_size=True) # nudot
     elif machine.strip()=="meitner":
         print("meitner setup")
-        worker = CaffeLArCV1Worker(ident,"localhost", gpuid=1, weight_dir="/tmp",model_dir="/tmp/", print_msg_size=True) # meitner
+        worker = CaffeLArCV1Worker(ident,"localhost", gpuid=gpuid, weight_dir="/tmp",model_dir="/tmp/", print_msg_size=True) # meitner
     else:
         print("default")
-        worker = CaffeLArCV1Worker(ident,"localhost", gpuid=1, weight_dir="/tmp",model_dir="/tmp/", print_msg_size=True) # meitner
+        worker = CaffeLArCV1Worker(ident,"localhost", gpuid=gpuid, weight_dir="/tmp",model_dir="/tmp/", print_msg_size=True) # meitner
     worker.do_work()
 
 def main():
@@ -62,7 +62,7 @@ def main():
         
     # start up workers
     for i in range(NBR_WORKERS):
-        start(start_worker,i,machine)
+        start(start_worker,i,i,machine)
 
     broker.start(-1.0)
     broker.stop()

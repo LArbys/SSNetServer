@@ -346,11 +346,14 @@ class CaffeLArCV1Client( SSNetClient ):
 
         msg = []
         totmsgsize = 0
-        totcompsize = 0        
+        totcompsize = 0
+        ibatch = 0
         for (ktype,name),plane_img_v in self.imgdata_dict.items():
             meta_v  = self.imgmeta_dict[name]
+            rse = self.batch2rse[0]
             for p,data in enumerate(plane_img_v):
                 meta = meta_v[p]
+                strrse="(%d,%d,%d)"%rse
                 x_enc = msgpack.packb(data, default=m.encode)
                 x_comp = zlib.compress(x_enc,self.compression_level)
                 if self.print_msg_sizes:
@@ -362,9 +365,10 @@ class CaffeLArCV1Client( SSNetClient ):
                     totcompsize += com_size
                 
                 msg.append( name )
-                msg.append( meta.dump().strip() )
+                msg.append( meta.dump().strip()+":"+strrse )
                 msg.append( x_comp )                
-                print "CaffeLArCV1Client[{}] sending array name=\"{}\" shape={} meta={}".format(self._identity,name,data.shape,meta.dump().strip())
+                print "CaffeLArCV1Client[{}] sending array name=\"{}\" shape={} meta={}".format(self._identity,name,data.shape,msg[-2])
+            ibatch += 1
 
         if self.print_msg_sizes:
             print "CaffeLArCV1Client[{}] created msg of size (numpy arrays only): {} MB".format(self._identity,totmsgsize/1.0e6)
@@ -476,14 +480,23 @@ class CaffeLArCV1Client( SSNetClient ):
         for i in range(0,parts,3):
             name    = frames[i].decode("ascii")
             metamsg = frames[i+1]
+            rsemsg  = metamsg.split(":")[-1]
+            metamsg = metamsg.split(":")[0]
             x_comp  = frames[i+2]
             x_enc   = zlib.decompress(x_comp)
             meta = decode_larcv1_metamsg( metamsg )
             arr = msgpack.unpackb(x_enc, object_hook=m.decode)
             nbatches = arr.shape[0]
-            print "CaffeLArCV1Client[{}] received array name=\"{}\" shape={} meta={} batchsize={}".format(self._identity,name,arr.shape,meta.dump().strip(),nbatches)
+            print "CaffeLArCV1Client[{}] received array name=\"{}\" shape={} meta={} rse={} batchsize={}".format(self._identity,name,arr.shape,meta.dump().strip(),rsemsg,nbatches)
 
-            assert(nbatches==1) # else wtf?
+            rse_returned = eval(rsemsg)
+            
+            if nbatches!=1:
+                print "CaffeLArCV1Client[{}] unexpected batchsize!".format(self._identity)
+                return False
+            if rse_returned!=rse:
+                print "CaffeLArCV1Client[{}] mismatched RSE! Sent={} vs. Received={}".format(self._identity,rse,rse_returned)
+                return False
 
             planeid = meta.plane()
             # note, the background channel is not sent back
@@ -497,6 +510,7 @@ class CaffeLArCV1Client( SSNetClient ):
         
         treply = time.time()-treply 
         self._ttracker["savereply::total"] += treply
+        return True
         
     def process_events(self, start=None, end=None):
 
@@ -506,10 +520,30 @@ class CaffeLArCV1Client( SSNetClient ):
         if end is None:
             end = self.nentries
 
+        num_event_tries = 0
         for ientry in range(start,end):
             ok = self.send_receive()
             if ok is False:
-                raise RuntimeError("Trouble processing event")
+                num_event_tries += 1
+                print "CaffeLArCV1Client[{}] error send/recieve last batch. retry ({} of 3)".format(self._identity,num_event_tries)
+                if num_event_tries > 3:
+                    raise RuntimeError("CaffeLArCV1Client[{}] too many errors for one event".format(self._identity))
+
+                if self.delivered>0:
+                    # go back one delivered step
+                    self.delivered -= 1
+                elif self.delivered==0 and self.totserved==0:
+                    # resend first entry
+                    self.delivered = 0
+                elif self.delivered==0 and self.totserved>0:
+                    # go back to last entry
+                    self.delivered = self.nentries-1
+                else:
+                    raise RuntimeError("CaffeLArCV1Client[{}] should never reach here".format(self._identity))
+
+            else:
+                num_event_tries = 0
+                self.totserved += 1
             self.print_time_tracker()
 
         tprocess = time.time()-tprocess

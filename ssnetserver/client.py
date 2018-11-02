@@ -84,8 +84,8 @@ class SSNetClient(object):
                 troundtrip = time.time()-troundtrip
                 self._ttracker["send/receive::triptime"] += troundtrip
                 self.nmsgs += 1
-                self.process_reply( reply )
-                return True
+                ok = self.process_reply( reply )
+                return ok
                 
             else:
                 # timed out
@@ -96,7 +96,6 @@ class SSNetClient(object):
                 retries_left -= 1
                 if retries_left > 0:
                     self.load_socket()
-                
 
         # should not get here
         troundtrip = time.time()-troundtrip
