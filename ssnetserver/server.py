@@ -52,7 +52,7 @@ class WorkerQueue(object):
 
 class SSNetBroker:
 
-    def __init__(self,ipaddress,frontendport=5559,backendport=5560, heartbeat_interval_secs=1, heartbeat_liveness=5, poller_timeout_secs=1):
+    def __init__(self,ipaddress,frontendport=5559,backendport=5560, heartbeat_interval_secs=1, heartbeat_liveness=5, poller_timeout_secs=1.0):
         # Prepare our context and sockets
         self._ipaddress = ipaddress
         self._heartbeat_interval  = heartbeat_interval_secs
@@ -90,18 +90,19 @@ class SSNetBroker:
         heartbeat_at = time.time() + self._heartbeat_interval
         
         tstart = time.time()
-
+        tlast  = time.time()
         
         while True:
-            #print "SSNetBroker: runtime=",time.time()-tstart,"secs"
-
+            print "SSNetBroker: runtime=",time.time()-tstart," (secs sincelastloop=",time.time()-tlast,")"
+            tlast = time.time()
+            
             if len(self._workers)>0:
                 poller = poll_both
             else:
                 poller = poll_workers
             
             socks = dict(poller.poll(self._poller_timeout_secs*1000))
-            print "SSNetBroker: finish poll."
+            print "SSNetBroker: finished poll (",time.time()-tlast," sec since loop start)"
 
             # Handle worker activity on backend
             if socks.get(self._backend) == zmq.POLLIN:
@@ -126,13 +127,6 @@ class SSNetBroker:
                     print "SSNetBroker: route worker {} result back to client {}".format( address.decode("ascii"), msg[0].decode("ascii") )
                     self._frontend.send_multipart(msg)
 
-                # Send heartbeats to idle workers if it's time
-                if time.time() >= heartbeat_at:
-                    for worker in self._workers.queue:
-                        msg = [worker, PPP_HEARTBEAT]
-                        self._backend.send_multipart(msg)
-                    heartbeat_at = time.time() + self._heartbeat_interval
-
             # Handle frontend requests
             if socks.get(self._frontend) == zmq.POLLIN:
                 frames = self._frontend.recv_multipart()
@@ -143,9 +137,21 @@ class SSNetBroker:
                 print "SSNetBroker: send job for {} to {}".format(frames[1].decode("ascii"),frames[0].decode("ascii"))
                 self._backend.send_multipart(frames)
 
+            # Send heartbeats to idle workers if it's time
+            if time.time() >= heartbeat_at:
+                print "time since last heartbeat: ",time.time()-heartbeat_at," secs"
+                for worker in self._workers.queue:
+                    print "send worker:{} heartbeat".format( worker )
+                    msg = [worker, PPP_HEARTBEAT]
+                    self._backend.send_multipart(msg)
+                heartbeat_at = time.time() + self._heartbeat_interval
+                print "time until next heartbeat: ",heartbeat_at - time.time()," secs"
+            else:
+                print "time until next heartbeat: ",heartbeat_at - time.time()," secs"
+
             # purge expired workers
             self._workers.purge()
-            print "SSNetBroker: purged. in queue=",len(self._workers)
+            print "SSNetBroker: purged. in queue=",len(self._workers),"(",time.time()-tlast," sec since loop start)"
                     
 
             # check for time-out condition.
