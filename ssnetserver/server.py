@@ -134,7 +134,8 @@ class SSNetBroker:
                     print "SSNetBroker: error in frontend frame"
                     break
                 frames.insert(0, self._workers.next())
-                print "SSNetBroker: send job for {} to {}".format(frames[1].decode("ascii"),frames[0].decode("ascii"))
+                #print "SSNetBroker: send job for {} to {}".format(frames[1].decode("ascii"),frames[0].decode("ascii"))
+                print "SSNetBroker: send job for {} to {}".format(frames[1],frames[0])
                 self._backend.send_multipart(frames)
 
             # Send heartbeats to idle workers if it's time

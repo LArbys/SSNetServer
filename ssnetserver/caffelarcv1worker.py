@@ -23,7 +23,7 @@ class CaffeLArCV1Worker( SSNetWorker ):
     def __init__( self, identity,broker_ipaddress,
                   gpuid=0, weight_dir="/tmp", model_dir="/tmp", 
                   port=5560, heartbeat_interval_secs=2, num_missing_beats=3, timeout_secs=30,
-                  ssh_thru_server=None, print_msg_size=False, reply_in_float16=True ):
+                  ssh_thru_server=None, print_msg_size=False, reply_in_float16=True, decoder="msgpack" ):
         super( CaffeLArCV1Worker, self ).__init__(identity,broker_ipaddress,
                                                   port=port, heartbeat_interval_secs=heartbeat_interval_secs,
                                                   num_missing_beats=num_missing_beats, timeout_secs=timeout_secs,
@@ -55,6 +55,11 @@ class CaffeLArCV1Worker( SSNetWorker ):
         # compression level
         self.compression_level = 6
 
+        # msg decoder/encoder
+        self.decoder = decoder
+        if self.decoder not in ["msgpack","tmessage"]:
+            raise ValueError("CaffeLArCV1Worker decoder must be either [\"msgpack\",\"tmessage\"]")
+
         # print msg size (for debug and cost estimation)
         self.print_msg_size = print_msg_size
 
@@ -76,22 +81,31 @@ class CaffeLArCV1Worker( SSNetWorker ):
         # remake arrays
         self.shape_dict = {}
         self.meta_dict  = {}
+        self.rse_dict   = {}
         self.image_dict = {}
         parts = len(frames)
         for i in range(0,parts,3):
             # parse frames
-            name  = frames[i].decode("ascii")
-            metamsg  = frames[i+1]
-            x_comp = frames[i+2]
-            x_enc  = zlib.decompress(x_comp)
+            name    = frames[i].decode("ascii")
+            metamsg = frames[i+1]
+            x_comp  = frames[i+2]
 
-            # decode frames
-            
-            # -- meta
+            # -- decode meta
+            print "meta msg: ",metamsg
             meta = decode_larcv1_metamsg( metamsg )
+            rse  = metamsg.split(":")[-1]
             
-            # -- array
-            arr = msgpack.unpackb(x_enc, object_hook=m.decode)
+            # -- array            
+            if self.decoder=="msgpack":
+                x_enc   = zlib.decompress(x_comp)
+                arr = msgpack.unpackb(x_enc, object_hook=m.decode)
+            elif self.decoder=="tmessage":
+                print type(x_comp),len(x_comp),x_comp
+                tmsg = larcv.Image2DTMessage( x_comp, len(x_comp) )
+                img  = tmsg.decode()
+                arr  = larcv.as_ndarray( img )
+            else:
+                raise ValueError("Unrecognized decoder: {}".format(self.decoder))
 
             key = (name,meta.plane())
             if key not in self.image_dict:
@@ -99,10 +113,11 @@ class CaffeLArCV1Worker( SSNetWorker ):
                 self.meta_dict[key]  = {}                
 
             self.image_dict[key] = arr
-            self.meta_dict[key]  = meta            
+            self.meta_dict[key]  = meta
             self.shape_dict[key] = arr.shape
+            self.rse_dict[key]   = rse
                 
-            print "CaffeLArCV1Worker[{}] received array name=\"{}\" shape={} meta={}".format(self._identity,name,arr.shape,meta.dump().strip())
+            print "CaffeLArCV1Worker[{}] received array name=\"{}\" shape={} meta={} rse={}".format(self._identity,name,arr.shape,meta.dump().strip(),rse)
 
         return "Thanks!"
 
@@ -122,6 +137,9 @@ class CaffeLArCV1Worker( SSNetWorker ):
             dummy = np.zeros( shape, dtype=np.float32 )
             meta  = self.meta_dict[key]
             img   = self.image_dict[key]
+            rse   = self.rse_dict[key]
+
+            # rse = "(0,0,0)" # for debug: purposely send the wrong rse back
 
             msg_batchsize = shape[0]
 
@@ -166,25 +184,48 @@ class CaffeLArCV1Worker( SSNetWorker ):
                     chslice[ imgslice<10.0 ] = 0
                 
             # encode
-            x_enc = msgpack.packb( ssnetout, default=m.encode )
-            x_comp = zlib.compress(x_enc,self.compression_level)
+            if self.decoder=="msgpack":
+                x_enc = msgpack.packb( ssnetout, default=m.encode )
+                x_comp = zlib.compress(x_enc,self.compression_level)
 
-            # for debug: inspect compression gains (usually reduction to 1% or lower of original size)
-            if self.print_msg_size:
-                encframe = zmq.Frame(x_enc)
-                comframe = zmq.Frame(x_comp)
-                totmsgsize  += len(encframe.bytes)
-                totcompsize += len(comframe.bytes)
+                # for debug: inspect compression gains (usually reduction to 1% or lower of original size)
+                if self.print_msg_size:
+                    encframe = zmq.Frame(x_enc)
+                    comframe = zmq.Frame(x_comp)
+                    totmsgsize  += len(encframe.bytes)
+                    totcompsize += len(comframe.bytes)
+                
+                reply.append( name.encode('utf-8') )
+                reply.append( meta.dump().strip()+":"+rse )
+                reply.append( x_comp )
+
+                # make the return message
+                print "CaffeLArCV1Worker[{}] preparing (msgpack) reply for name=\"{}\" shape={} meta={} rse={}".format(self._identity,name,ssnetout.shape,meta.dump().strip(),rse)
+            elif self.decoder=="tmessage":
+                # we have to serialize both channels
+                # make track image
+                imgtrack  = larcv.as_image2d_meta( ssnet[0,0,:,:], meta )
+                imgshower = larcv.as_image2d_meta( ssnet[0,1,:,:], meta )
+
+                tmsgtrack = rt.TMessage()
+                tmsgtrack.WriteObject(imgtrack)
+                msgtrack = tmsgtrack.Buffer()
+
+                tmsgshower = rt.TMessage()
+                tmsgshower.WriteObject(imgshower)
+                msgshower = tmsgshower.Buffer()
+                
+                reply.append( (name+"_track").encode('utf-8') )
+                reply.append( meta.dump().strip() )
+                reply.append( msgtrack )
+
+                reply.append( (name+"_shower").encode('utf-8') )
+                reply.append( meta.dump().strip() )
+                reply.append( msgshower )
                 
 
-            # make the return message
-            print "CaffeLArCV1Worker[{}] preparing reply for name=\"{}\" shape={} meta={}".format(self._identity,name,ssnetout.shape,meta.dump().strip())
-
-            reply.append( name.encode('utf-8') )
-            reply.append( meta.dump().strip() )
-            reply.append( x_comp )
-
-        print "CaffeLArCV1Worker[{}] finished reply for name=\"{}\". size of array portion={} MB (uncompressed {} MB)".format(self._identity,name,totcompsize/1.0e6,totmsgsize/1.0e6)
+        if self.print_msg_size:
+            print "CaffeLArCV1Worker[{}] finished reply for name=\"{}\". size of array portion={} MB (uncompressed {} MB)".format(self._identity,name,totcompsize/1.0e6,totmsgsize/1.0e6)
 
         return reply
         
