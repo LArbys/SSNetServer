@@ -20,6 +20,7 @@ def decode_larcv1_metamsg( metamsg, override_plane=None ):
       const double origin_x=0.,  const double origin_y=0.,
       const PlaneID_t plane=::larcv::kINVALID_PLANE)
     """
+    print "decoding meta message: ",metamsg.decode("ascii")
     meta_nums = [ int(x) for x in re.findall("\d+",metamsg.decode("ascii")) ]
     width    = meta_nums[5]-meta_nums[3]
     height   = meta_nums[4]-meta_nums[6]

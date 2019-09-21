@@ -293,9 +293,20 @@ class CaffeLArCV1Client( SSNetClient ):
             # ------------------------------------------------------------------------------
             plane_vv = [ self.croicroppers[p].get_cropped_image() for p in range(self.NPLANES)  ]
             nimgs    = [ plane_v.size() for plane_v in plane_vv ]
+            print "nimgs: ",nimgs
 
             # check its not empty
-            # -------------------            
+            # -------------------
+            # first check for croi
+            self.io.read_entry(index,True)
+            ncroi_in_entry = self.io.get_data( larcv.kProductROI, "croi" ).ROIArray().size()
+            print "ncroi: ",ncroi_in_entry
+            if ncroi_in_entry==0:
+                # no images in this event. still, move up the delivered count. return None.
+                self.delivered += 1
+                print "CaffeLArCV1Client[{}] empty set of crops for this entry".format(self._identity),": ",rse
+                return None                
+            
             isempty = True
             for plane_v in plane_vv:
                 if plane_v.size()>0:

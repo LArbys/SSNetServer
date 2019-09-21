@@ -1,12 +1,14 @@
 #!/bin/bash
 
-SSS_BASEDIR=$1 # where the ssnetserver repo is
-WORKDIR=$2     # Folder where files can be written
-BROKER=$3      # IP ADDRESS OF BROKER
-PORT=$4        # BROKER PORT FOR CLIENTS
-SSNETOUT=$5    # OUTPUT PATH FOR SSNET FILE
-TAGGERIN=$6    # INPUT PATH FOR TAGGER FILE
-TREENAME=$7    # image2d treename
+SSS_BASEDIR=$1   # where the ssnetserver repo is
+WORKDIR=$2       # Folder where files can be written
+BROKER=$3        # IP ADDRESS OF BROKER
+PORT=$4          # BROKER PORT FOR CLIENTS
+SSNETOUT=$5      # OUTPUT PATH FOR SSNET FILE
+TAGGERIN=$6      # INPUT PATH FOR TAGGER FILE
+TREENAME=$7      # image2d treename
+IMGMOD_CONFIG=$8 # configuration for image loader
+SUPERAIN=$9      # INPUT PATH FOR SUPERA FILE, FOR CHECK
 
 
 export OMP_NUM_THREADS=1
@@ -28,8 +30,12 @@ chmod -R g+rws ${jobdir}
 cd ${jobdir}
 
 # run the job
-echo "start_caffe_client.py --identity ${SLURM_JOBID} --broker ${BROKER} -p ${PORT} -f ${TAGGERIN} -o ${local_outfile} -t ${TREENAME} --croi"
-start_caffe_client.py --identity ${SLURM_JOBID} --broker ${BROKER} -p ${PORT} -f ${TAGGERIN} -o ${local_outfile} -t ${TREENAME} --croi || exit
+echo "start_caffe_client.py --identity ${SLURM_JOBID} --broker ${BROKER} -p ${PORT} -f ${TAGGERIN} -o ${local_outfile} -t ${TREENAME} -x ${IMGMOD_CONFIG} --croi"
+start_caffe_client.py --identity ${SLURM_JOBID} --broker ${BROKER} -p ${PORT} -f ${TAGGERIN} -o ${local_outfile} -t ${TREENAME} -x ${IMGMOD_CONFIG} --croi || exit
+
+# run the check script
+echo "ssnetcheck.py $SUPERIN ${local_outfile} $TAGGERIN > checkfile"
+ssnetcheck.py $SUPERAIN ${local_outfile} $TAGGERIN >& checkfile
 
 # copy the output file
 cp ${local_outfile} ${SSNETOUT}
